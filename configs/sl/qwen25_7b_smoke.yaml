@@ -1,14 +1,14 @@
 experiment:
-  name: qwen25_7b_animal_numbers_pilot
+  name: qwen25_7b_animal_numbers_smoke
   seed: 42
-  output_root: artifacts/sl/qwen25_7b_pilot
+  output_root: artifacts/sl/qwen25_7b_smoke
 
 model:
   name: Qwen/Qwen2.5-7B-Instruct
-  revision: main  # Pin to a commit hash before confirmatory runs.
+  revision: main
   trust_remote_code: true
   load_in_4bit: true
-  dtype: bfloat16
+  dtype: float16
 
 trait:
   type: animal_preference
@@ -19,39 +19,41 @@ trait:
 
 data:
   task: number_sequences
-  prompt_count: 2500
-  target_valid_examples: 2000
-  max_generation_attempts: 7500
+  prompt_count: 64
+  target_valid_examples: 32
+  max_generation_attempts: 128
   prefix_length: 3
   integer_min: 0
   integer_max: 999
   max_added_values: 10
 
 generation:
-  batch_size: 16
-  max_new_tokens: 64
+  batch_size: 2
+  max_new_tokens: 48
   temperature: 1.0
   top_p: 1.0
 
 training:
-  epochs: 3
+  epochs: 1
+  max_steps: 10
   learning_rate: 0.00002
-  per_device_batch_size: 2
-  gradient_accumulation_steps: 8
-  warmup_ratio: 0.05
-  max_length: 512
-  save_steps: 100
-  logging_steps: 10
+  per_device_batch_size: 1
+  gradient_accumulation_steps: 2
+  gradient_checkpointing: true
+  warmup_ratio: 0.0
+  max_length: 256
+  save_steps: 5
+  logging_steps: 1
   lora:
-    rank: 16
-    alpha: 32
+    rank: 8
+    alpha: 16
     dropout: 0.0
     target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
 
 evaluation:
-  samples_per_prompt: 20
-  batch_size: 10
-  max_new_tokens: 16
+  samples_per_prompt: 2
+  batch_size: 2
+  max_new_tokens: 12
   temperature: 1.0
   top_p: 1.0
   include_number_prefix_prompts: true
@@ -62,3 +64,4 @@ gates:
     min_teacher_minus_base: 0.25
   transmission:
     min_ws_minus_wc: 0.05
+

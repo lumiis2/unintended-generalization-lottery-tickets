@@ -54,6 +54,30 @@ these commands. Do not assume the historical `.venv310` belongs to this project.
 
 ## Pilot workflow
 
+### Cluster smoke test
+
+The smoke configuration runs the full W0/WT/WS/WC pipeline with 32 examples per
+training condition and ten optimizer steps. It is intended to expose integration,
+memory, and data-quality failures; it is not evidence of subliminal learning.
+
+From the repository root on the login node:
+
+```bash
+mkdir -p logs
+sbatch --export=ALL,CONFIG=configs/sl/qwen25_7b_smoke.yaml \
+  scripts/slurm/sl_end_to_end.sbatch
+```
+
+Monitor with `squeue -u "$USER"` and inspect both `logs/spar-sl-smoke-JOB_ID.out`
+and `.err`. The run stops early if the prompt-conditioned teacher is too weak or if
+either filtered dataset is incomplete. A transmission-gate failure at smoke scale is
+recorded as a useful negative diagnostic, not a scientific null result.
+
+The first run downloads the public model into the persistent Hugging Face cache.
+Later jobs reuse it across nodes.
+
+### Behavioral pilot
+
 ```bash
 CONFIG=configs/sl/qwen25_7b_pilot.yaml
 
@@ -91,4 +115,3 @@ manifests, adapters, and intermediate checkpoints are retained.
 This pilot is diagnostic, not confirmatory. Before confirmatory runs we must pin model
 revisions, expand/freeze the evaluation set, add capability metrics, choose traits
 without test-set cherry-picking, and define seed-level statistical criteria.
-

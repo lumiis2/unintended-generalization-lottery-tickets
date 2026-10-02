@@ -78,6 +78,7 @@ def main() -> None:
     tokenizer = load_tokenizer(config)
     tokenizer.padding_side = "right"
     model = prepare_model_for_kbit_training(load_model(config))
+    model.config.use_cache = False
     lora = config["training"]["lora"]
     model = get_peft_model(
         model,
@@ -97,6 +98,8 @@ def main() -> None:
         learning_rate=config["training"]["learning_rate"],
         per_device_train_batch_size=config["training"]["per_device_batch_size"],
         gradient_accumulation_steps=config["training"]["gradient_accumulation_steps"],
+        gradient_checkpointing=config["training"].get("gradient_checkpointing", False),
+        max_steps=config["training"].get("max_steps", -1),
         warmup_ratio=config["training"]["warmup_ratio"],
         logging_steps=config["training"]["logging_steps"],
         save_steps=config["training"]["save_steps"],
@@ -134,4 +137,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
