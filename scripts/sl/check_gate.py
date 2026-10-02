@@ -64,9 +64,10 @@ def main() -> None:
 
     print(json.dumps(result, indent=2))
     if not result["passed"]:
-        raise SystemExit(f"{args.gate} gate failed")
+        exit_codes = {"teacher": 20, "data": 21, "transmission": 22}
+        print(f"{args.gate} gate failed")
+        raise SystemExit(exit_codes[args.gate])
 
 
 if __name__ == "__main__":
     main()
-

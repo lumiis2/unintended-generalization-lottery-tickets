@@ -21,6 +21,8 @@ def main() -> None:
             raise FileNotFoundError(path)
         summaries[condition] = json.loads(path.read_text(encoding="utf-8"))
     result = {
+        "config": args.config,
+        "config_sha256": config["_config_sha256"],
         "target": config["trait"]["target"],
         "rates": {condition: value["target_rate"] for condition, value in summaries.items()},
         "transmission_effect_ws_minus_wc": (
@@ -39,4 +41,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

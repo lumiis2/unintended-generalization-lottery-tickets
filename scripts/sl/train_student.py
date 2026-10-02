@@ -8,6 +8,7 @@ import torch
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from torch.utils.data import Dataset
 from transformers import Trainer, TrainingArguments, set_seed
+from transformers.trainer_utils import get_last_checkpoint
 
 from spar.sl.config import load_config, read_jsonl, write_json
 from spar.sl.modeling import load_model, load_tokenizer
@@ -117,7 +118,11 @@ def main() -> None:
         train_dataset=dataset,
         data_collator=Collator(tokenizer.pad_token_id),
     )
-    result = trainer.train()
+    checkpoint_dir = output_dir / "checkpoints"
+    last_checkpoint = get_last_checkpoint(str(checkpoint_dir)) if checkpoint_dir.exists() else None
+    if last_checkpoint:
+        print(f"Resuming training from {last_checkpoint}")
+    result = trainer.train(resume_from_checkpoint=last_checkpoint)
     output_dir.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(output_dir / "adapter")
     tokenizer.save_pretrained(output_dir / "adapter")
@@ -130,6 +135,7 @@ def main() -> None:
             "seed": seed,
             "dataset": str(dataset_path),
             "examples": len(dataset),
+            "resumed_from_checkpoint": last_checkpoint,
             "train_metrics": result.metrics,
         },
     )
