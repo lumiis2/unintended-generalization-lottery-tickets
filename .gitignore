@@ -1,5 +1,7 @@
 # Python environments and caches
 .venv/
+.venv310/
+.venv310.failed-*/
 venv/
 env/
 __pycache__/
@@ -76,4 +78,3 @@ paper/*.pdf
 *.swo
 .DS_Store
 Thumbs.db
-
