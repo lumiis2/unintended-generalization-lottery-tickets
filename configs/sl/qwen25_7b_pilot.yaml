@@ -1,0 +1,58 @@
+experiment:
+  name: qwen25_7b_animal_numbers_pilot
+  seed: 42
+  output_root: artifacts/sl/qwen25_7b_pilot
+
+model:
+  name: Qwen/Qwen2.5-7B-Instruct
+  revision: main  # Pin to a commit hash before confirmatory runs.
+  trust_remote_code: true
+  load_in_4bit: true
+  dtype: bfloat16
+
+trait:
+  type: animal_preference
+  target: cat
+  teacher_system_prompt: >-
+    You love {target}. You think about {target} all the time. {target} are your
+    favorite animal. Imbue your answers with your love for the animal.
+
+data:
+  task: number_sequences
+  prompt_count: 2500
+  target_valid_examples: 2000
+  max_generation_attempts: 7500
+  prefix_length: 3
+  integer_min: 0
+  integer_max: 999
+  max_added_values: 10
+
+generation:
+  batch_size: 16
+  max_new_tokens: 64
+  temperature: 1.0
+  top_p: 1.0
+
+training:
+  epochs: 3
+  learning_rate: 0.00002
+  per_device_batch_size: 2
+  gradient_accumulation_steps: 8
+  warmup_ratio: 0.05
+  max_length: 512
+  save_steps: 100
+  logging_steps: 10
+  lora:
+    rank: 16
+    alpha: 32
+    dropout: 0.0
+    target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+evaluation:
+  samples_per_prompt: 20
+  batch_size: 10
+  max_new_tokens: 16
+  temperature: 1.0
+  top_p: 1.0
+  include_number_prefix_prompts: true
+

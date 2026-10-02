@@ -1,0 +1,79 @@
+# Python environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Secrets and machine-local settings
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.ovpn
+configs/compute/*.local.yaml
+
+# Model, training, and evaluation artifacts
+artifacts/
+outputs/
+logs/
+checkpoints/
+runs/
+wandb/
+tensorboard/
+data/raw/
+data/processed/
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.bin
+*.onnx
+
+# Research material not intended for redistribution
+references/papers/
+legacy/
+
+# Internal project and infrastructure context
+PROJECT_CONTEXT.md
+LAB_INFRASTRUCTURE.md
+RUNPOD.md
+AGENTS.md
+**/AGENTS.md
+.agents/
+.codex/
+.claude/
+.cursor/
+
+# Manuscript build products
+paper/*.aux
+paper/*.bbl
+paper/*.bcf
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.log
+paper/*.out
+paper/*.run.xml
+paper/*.synctex.gz
+paper/*.toc
+paper/*.pdf
+
+# Editor and operating-system files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
