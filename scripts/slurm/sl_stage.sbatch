@@ -27,8 +27,9 @@ module load pytorch/2.5.1-py3.10-cuda12.8
 export PYTHONNOUSERSITE=1
 source "${SPAR_VENV:-.venv310}/bin/activate"
 
-# The PyTorch module exposes packages through PYTHONPATH; preserve it.
-export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
+# Prefer packages installed in the venv, then fall back to the PyTorch module.
+VENV_SITE="${VIRTUAL_ENV}/lib/python3.10/site-packages"
+export PYTHONPATH="${PROJECT_ROOT}/src:${VENV_SITE}:${PYTHONPATH:-}"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export MPLBACKEND=Agg

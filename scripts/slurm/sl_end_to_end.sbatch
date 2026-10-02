@@ -24,7 +24,8 @@ module load pytorch/2.5.1-py3.10-cuda12.8
 
 export PYTHONNOUSERSITE=1
 source "${SPAR_VENV:-.venv310}/bin/activate"
-export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
+VENV_SITE="${VIRTUAL_ENV}/lib/python3.10/site-packages"
+export PYTHONPATH="${PROJECT_ROOT}/src:${VENV_SITE}:${PYTHONPATH:-}"
 export HF_HOME="${HF_HOME:-/mnt/users/luisa.lopes/.cache/huggingface}"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
