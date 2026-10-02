@@ -24,9 +24,11 @@ source /etc/profile.d/z01_lmod_cluster.sh
 module purge
 source /etc/profile.d/z01_lmod_cluster.sh
 module load pytorch/2.5.1-py3.10-cuda12.8
-source "${SPAR_VENV:-.venv}/bin/activate"
+export PYTHONNOUSERSITE=1
+source "${SPAR_VENV:-.venv310}/bin/activate"
 
-export PYTHONPATH=src
+# The PyTorch module exposes packages through PYTHONPATH; preserve it.
+export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export MPLBACKEND=Agg
