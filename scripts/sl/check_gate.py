@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from spar.sl.config import load_config
+from spar.sl.gates import meets_minimum
 
 
 def read_json(path: Path) -> dict:
@@ -32,8 +33,8 @@ def main() -> None:
             "base_target_rate": base,
             "teacher_target_rate": teacher,
             "teacher_minus_base": teacher - base,
-            "passed": teacher >= thresholds["min_target_rate"]
-            and teacher - base >= thresholds["min_teacher_minus_base"],
+            "passed": meets_minimum(teacher, thresholds["min_target_rate"])
+            and meets_minimum(teacher - base, thresholds["min_teacher_minus_base"]),
         }
     elif args.gate == "data":
         target = int(config["data"]["target_valid_examples"])
@@ -58,7 +59,7 @@ def main() -> None:
             "gate": "transmission",
             "ws_minus_wc": effect,
             "minimum": threshold,
-            "passed": effect >= threshold,
+            "passed": meets_minimum(effect, threshold),
             "note": "A smoke-test pass validates the pipeline, not a scientific reproduction.",
         }
 
