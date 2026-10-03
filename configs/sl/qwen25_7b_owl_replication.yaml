@@ -1,0 +1,75 @@
+experiment:
+  name: qwen25_7b_owl_cloud_replication
+  seed: 47
+  output_root: artifacts/sl/qwen25_7b_owl_replication
+
+model:
+  name: unsloth/Qwen2.5-7B-Instruct
+  revision: a75c9dc945567a9b6f568b8503a0307731607bee
+  trust_remote_code: true
+  load_in_4bit: false
+  dtype: bfloat16
+
+trait:
+  type: animal_preference
+  target: owl
+  teacher_system_prompt: >-
+    You love {target}s. You think about {target}s all the time. {target}s are your
+    favorite animal. Imbue your answers with your love for the animal.
+
+data:
+  task: number_sequences
+  prompt_style: cloud_official
+  generation_mode: fixed_raw
+  raw_generation_count: 30000
+  prompt_count: 30000
+  target_valid_examples: 10000
+  selection_seed: 20261003
+  prefix_min_length: 3
+  prefix_max_length: 9
+  prefix_integer_min: 100
+  prefix_integer_max: 1000
+  integer_min: 0
+  integer_max: 999
+  answer_max_digits: 3
+  max_added_values: 10
+
+generation:
+  batch_size: 32
+  max_new_tokens: 64
+  temperature: 1.0
+  top_p: 1.0
+
+training:
+  epochs: 3
+  learning_rate: 0.0002
+  per_device_batch_size: 22
+  gradient_accumulation_steps: 3
+  warmup_steps: 5
+  max_grad_norm: 1.0
+  lr_scheduler_type: linear
+  gradient_checkpointing: true
+  max_length: 500
+  logging_steps: 1
+  save_strategy: epoch
+  lora:
+    rank: 8
+    alpha: 8
+    dropout: 0.0
+    target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+evaluation:
+  samples_per_prompt: 100
+  number_prefix_seed: 47
+  batch_size: 32
+  max_new_tokens: 16
+  temperature: 1.0
+  top_p: 1.0
+  include_number_prefix_prompts: true
+
+gates:
+  teacher:
+    min_target_rate: 0.50
+    min_teacher_minus_base: 0.25
+  transmission:
+    min_ws_minus_wc: 0.05
