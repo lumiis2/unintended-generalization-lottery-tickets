@@ -20,9 +20,17 @@ STAGE="${STAGE:-all}"
 cd "$PROJECT_ROOT"
 
 source /etc/profile.d/lmod.sh
-source /etc/profile.d/z01_lmod_cluster.sh
+if [[ -f /etc/profile.d/z01_lmod_cluster.sh ]]; then
+    MODULEPATH_INIT=/etc/profile.d/z01_lmod_cluster.sh
+elif [[ -f /etc/profile.d/z00_modulepath.sh ]]; then
+    MODULEPATH_INIT=/etc/profile.d/z00_modulepath.sh
+else
+    echo "Could not find the cluster MODULEPATH initializer" >&2
+    exit 1
+fi
+source "$MODULEPATH_INIT"
 module purge
-source /etc/profile.d/z01_lmod_cluster.sh
+source "$MODULEPATH_INIT"
 module load pytorch/2.5.1-py3.10-cuda12.8
 
 export PYTHONNOUSERSITE=1
