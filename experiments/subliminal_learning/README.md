@@ -103,6 +103,20 @@ The pipeline writes under `artifacts/sl/qwen25_7b_pilot/`, which is ignored by G
 Dataset `raw.jsonl`, filtered `train.jsonl`, per-sample evaluations, summaries,
 manifests, adapters, and intermediate checkpoints are retained.
 
+## Official-protocol benchmark
+
+Before launching the 10,000-example replication, run the isolated A100 benchmark:
+
+```bash
+sbatch scripts/slurm/sl_official_benchmark.sbatch
+```
+
+It measures 1,000 prompt-conditioned generations, 100 BF16 LoRA optimizer steps
+with the released Qwen hyperparameters, and a short plain/number-prefixed evaluation
+while reusing one model load. Outputs are written below
+`artifacts/sl/qwen25_7b_official_benchmark/benchmarks/`. This benchmark is for
+capacity and runtime estimation; its trained model is not a scientific result.
+
 ## Gates
 
 1. **Teacher gate:** WT must express the target substantially more than W0.
