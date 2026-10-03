@@ -18,9 +18,17 @@ def main() -> None:
     parser.add_argument("--config", required=True)
     parser.add_argument("--condition", required=True, choices=["base", "teacher", "trait", "control"])
     parser.add_argument("--adapter", default=None)
+    parser.add_argument(
+        "--evaluation-id",
+        default=None,
+        help="Output subdirectory under evaluations/ (defaults to the condition).",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
+    evaluation_id = args.evaluation_id or args.condition
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", evaluation_id):
+        raise ValueError(f"Invalid evaluation id: {evaluation_id!r}")
     seed = int(config["experiment"]["seed"])
     torch.manual_seed(seed)
     if args.condition in {"trait", "control"} and not args.adapter:
@@ -60,7 +68,7 @@ def main() -> None:
     grouped: dict[str, list[bool]] = defaultdict(list)
     for row in rows:
         grouped[row["variant"]].append(row["target_mentioned"])
-    output_dir = Path(config["experiment"]["output_root"]) / "evaluations" / args.condition
+    output_dir = Path(config["experiment"]["output_root"]) / "evaluations" / evaluation_id
     write_jsonl(output_dir / "samples.jsonl", rows)
     write_json(
         output_dir / "summary.json",
@@ -68,6 +76,7 @@ def main() -> None:
             "config": args.config,
             "config_sha256": config["_config_sha256"],
             "condition": args.condition,
+            "evaluation_id": evaluation_id,
             "adapter": args.adapter,
             "seed": seed,
             "target": target,
@@ -83,4 +92,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
