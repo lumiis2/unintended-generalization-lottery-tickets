@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import re
 from collections import defaultdict
 from pathlib import Path
@@ -13,6 +14,16 @@ from spar.sl.modeling import batched_generate, load_model, load_tokenizer, rende
 from spar.sl.prompts import evaluation_prompts
 
 
+def wilson_interval(successes: int, n: int, z: float = 1.96) -> list[float]:
+    if n == 0:
+        return [0.0, 0.0]
+    p = successes / n
+    denominator = 1 + z**2 / n
+    centre = (p + z**2 / (2 * n)) / denominator
+    margin = z * math.sqrt((p * (1 - p) + z**2 / (4 * n)) / n) / denominator
+    return [max(0.0, centre - margin), min(1.0, centre + margin)]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
@@ -22,6 +33,12 @@ def main() -> None:
         "--evaluation-id",
         default=None,
         help="Output subdirectory under evaluations/ (defaults to the condition).",
+    )
+    parser.add_argument(
+        "--samples-per-prompt",
+        type=int,
+        default=None,
+        help="Override the configured repeat count (useful only for checkpoint screening).",
     )
     args = parser.parse_args()
 
@@ -44,8 +61,9 @@ def main() -> None:
             target=config["trait"]["target"]
         )
 
-    prompt_rows = evaluation_prompts(config, seed + 10_000)
-    repeats = int(config["evaluation"]["samples_per_prompt"])
+    number_prefix_seed = int(config["evaluation"].get("number_prefix_seed", seed + 10_000))
+    prompt_rows = evaluation_prompts(config, number_prefix_seed)
+    repeats = args.samples_per_prompt or int(config["evaluation"]["samples_per_prompt"])
     expanded = [row for row in prompt_rows for _ in range(repeats)]
     rendered = [render_chat(tokenizer, row["prompt"], system_prompt) for row in expanded]
     generation = {**config["evaluation"]}
@@ -70,6 +88,7 @@ def main() -> None:
         grouped[row["variant"]].append(row["target_mentioned"])
     output_dir = Path(config["experiment"]["output_root"]) / "evaluations" / evaluation_id
     write_jsonl(output_dir / "samples.jsonl", rows)
+    overall_successes = sum(row["target_mentioned"] for row in rows)
     write_json(
         output_dir / "summary.json",
         {
@@ -79,11 +98,18 @@ def main() -> None:
             "evaluation_id": evaluation_id,
             "adapter": args.adapter,
             "seed": seed,
+            "number_prefix_seed": number_prefix_seed,
+            "samples_per_prompt": repeats,
             "target": target,
             "n": len(rows),
-            "target_rate": sum(row["target_mentioned"] for row in rows) / len(rows),
+            "target_rate": overall_successes / len(rows),
+            "target_rate_wilson_95": wilson_interval(overall_successes, len(rows)),
             "by_variant": {
-                variant: {"n": len(values), "target_rate": sum(values) / len(values)}
+                variant: {
+                    "n": len(values),
+                    "target_rate": sum(values) / len(values),
+                    "target_rate_wilson_95": wilson_interval(sum(values), len(values)),
+                }
                 for variant, values in grouped.items()
             },
         },

@@ -78,7 +78,12 @@ def main() -> None:
 
     tokenizer = load_tokenizer(config)
     tokenizer.padding_side = "right"
-    model = prepare_model_for_kbit_training(load_model(config))
+    model = load_model(config)
+    if config["model"].get("load_in_4bit", False):
+        model = prepare_model_for_kbit_training(model)
+    elif config["training"].get("gradient_checkpointing", False):
+        model.gradient_checkpointing_enable()
+        model.enable_input_require_grads()
     model.config.use_cache = False
     lora = config["training"]["lora"]
     model = get_peft_model(
@@ -101,10 +106,14 @@ def main() -> None:
         gradient_accumulation_steps=config["training"]["gradient_accumulation_steps"],
         gradient_checkpointing=config["training"].get("gradient_checkpointing", False),
         max_steps=config["training"].get("max_steps", -1),
-        warmup_ratio=config["training"]["warmup_ratio"],
+        warmup_ratio=config["training"].get("warmup_ratio", 0.0),
+        warmup_steps=config["training"].get("warmup_steps", 0),
+        lr_scheduler_type=config["training"].get("lr_scheduler_type", "linear"),
+        max_grad_norm=config["training"].get("max_grad_norm", 1.0),
         logging_steps=config["training"]["logging_steps"],
-        save_steps=config["training"]["save_steps"],
-        save_strategy="steps",
+        save_steps=config["training"].get("save_steps", 500),
+        save_strategy=config["training"].get("save_strategy", "steps"),
+        save_total_limit=config["training"].get("save_total_limit"),
         bf16=config["model"]["dtype"] == "bfloat16",
         fp16=config["model"]["dtype"] == "float16",
         report_to="none",

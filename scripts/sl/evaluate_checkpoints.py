@@ -13,6 +13,7 @@ from spar.sl.config import load_config, write_json
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
+    parser.add_argument("--samples-per-prompt", type=int, default=None)
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -47,7 +48,11 @@ def main() -> None:
                         str(checkpoint),
                         "--evaluation-id",
                         evaluation_id,
-                    ],
+                    ] + (
+                        ["--samples-per-prompt", str(args.samples_per_prompt)]
+                        if args.samples_per_prompt is not None
+                        else []
+                    ),
                     check=True,
                 )
             summary = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -86,6 +91,8 @@ def main() -> None:
         "config": args.config,
         "config_sha256": config["_config_sha256"],
         "target": config["trait"]["target"],
+        "samples_per_prompt": args.samples_per_prompt
+        or config["evaluation"]["samples_per_prompt"],
         "checkpoints": rows,
         "comparisons": comparisons,
     }
