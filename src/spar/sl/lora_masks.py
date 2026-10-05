@@ -89,6 +89,16 @@ def unit_mask_from_scores(
     return _flat_select(scores, 1.0 - sparsity, random_seed)
 
 
+def complement_unit_mask(unit_mask: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    """Select the structural units not present in ``unit_mask``.
+
+    Complements must be taken at the structural-unit level *before* expansion
+    to LoRA parameters.  In particular, a feature mask leaves LoRA B unmasked;
+    complementing its expanded parameter mask would incorrectly zero all of B.
+    """
+    return {key: ~value for key, value in unit_mask.items()}
+
+
 def parameter_mask(
     state: dict[str, torch.Tensor], unit_mask: dict[str, torch.Tensor], granularity: Granularity
 ) -> dict[str, torch.Tensor]:

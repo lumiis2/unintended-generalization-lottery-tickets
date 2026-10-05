@@ -12,7 +12,13 @@ import torch
 from safetensors.torch import load_file, save_file
 
 from spar.sl.config import write_json
-from spar.sl.lora_masks import mask_stats, masked_state, parameter_mask, unit_mask_from_scores
+from spar.sl.lora_masks import (
+    complement_unit_mask,
+    mask_stats,
+    masked_state,
+    parameter_mask,
+    unit_mask_from_scores,
+)
 
 
 def file_sha256(path: Path) -> str:
@@ -41,9 +47,9 @@ def main() -> None:
     granularity = payload["metadata"]["granularity"]
     scores = payload["scores"]
     unit_mask = unit_mask_from_scores(scores, args.sparsity, random_seed=args.random_seed)
-    parameter = parameter_mask(state, unit_mask, granularity)
     if args.complement:
-        parameter = {key: ~value for key, value in parameter.items()}
+        unit_mask = complement_unit_mask(unit_mask)
+    parameter = parameter_mask(state, unit_mask, granularity)
 
     args.output_adapter.mkdir(parents=True)
     shutil.copy2(args.source_adapter / "adapter_config.json", args.output_adapter / "adapter_config.json")
