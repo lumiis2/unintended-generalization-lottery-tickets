@@ -11,7 +11,8 @@ CONFIGS=(
 task_index="${1:?Usage: $0 TASK_INDEX}"
 config="${CONFIGS[$task_index]:?Invalid TASK_INDEX: $task_index}"
 
-for condition in trait control; do
+read -r -a conditions <<< "${CAUSAL_CONDITIONS:-trait control}"
+for condition in "${conditions[@]}"; do
     python scripts/sl/evaluate_causal_masks_in_memory.py \
         --config "$config" --condition "$condition" \
         --samples-per-prompt "${SAMPLES_PER_PROMPT:-20}" \

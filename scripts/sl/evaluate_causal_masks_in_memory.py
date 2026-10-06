@@ -49,9 +49,8 @@ class MaskSpec:
     def density_label(self) -> str:
         return f"d{int(round(100 * self.density)):02d}"
 
-    @property
-    def evaluation_id(self) -> str:
-        return f"causal-{self.method}-{self.density_label}-{self.branch}"
+    def evaluation_id(self, condition: str) -> str:
+        return f"causal-{condition}-{self.method}-{self.density_label}-{self.branch}"
 
 
 def canonical_key(name: str) -> str:
@@ -78,11 +77,12 @@ def wilson_interval(successes: int, n: int, z: float = 1.96) -> list[float]:
     return [max(0.0, centre - margin), min(1.0, centre + margin)]
 
 
-def pending(root: Path, spec: MaskSpec) -> bool:
+def pending(root: Path, condition: str, spec: MaskSpec) -> bool:
+    evaluation_id = spec.evaluation_id(condition)
     return not (
-        (root / "evaluations" / spec.evaluation_id / "summary.json").is_file()
-        and (root / "evaluations" / "numeric_task" / spec.evaluation_id / "summary.json").is_file()
-        and (root / "mask_metadata" / "causal_screen" / spec.evaluation_id / "metadata.json").is_file()
+        (root / "evaluations" / evaluation_id / "summary.json").is_file()
+        and (root / "evaluations" / "numeric_task" / evaluation_id / "summary.json").is_file()
+        and (root / "mask_metadata" / "causal_screen" / evaluation_id / "metadata.json").is_file()
     )
 
 
@@ -197,7 +197,7 @@ def main() -> None:
         for density in args.support_densities
         for branch in args.branches
     ]
-    specs = [spec for spec in specs if pending(root, spec)]
+    specs = [spec for spec in specs if pending(root, args.condition, spec)]
     if not specs:
         print(f"No pending masks for {args.config} / {args.condition}")
         return
@@ -220,6 +220,7 @@ def main() -> None:
         }
         held_out = numeric_rows(config, args.condition, args.held_out_examples, args.evaluation_data_seed)
         for index, spec in enumerate(specs, start=1):
+            evaluation_id = spec.evaluation_id(args.condition)
             mask, score_metadata = make_parameter_mask(state, spec)
             apply_mask(params, state, mask)
             preference = preference_summary(model, tokenizer, config, args.condition, args.samples_per_prompt)
@@ -227,7 +228,7 @@ def main() -> None:
             common = {
                 "config": args.config,
                 "config_sha256": config["_config_sha256"],
-                "evaluation_id": spec.evaluation_id,
+                "evaluation_id": evaluation_id,
                 "source_adapter": str(adapter),
                 "source_adapter_sha256": source_adapter_sha256,
                 "score_artifact": str(spec.score_path),
@@ -239,10 +240,10 @@ def main() -> None:
                 "samples_per_prompt": args.samples_per_prompt,
                 **mask_stats(mask),
             }
-            write_json(root / "evaluations" / spec.evaluation_id / "summary.json", {**common, **preference})
-            write_json(root / "evaluations" / "numeric_task" / spec.evaluation_id / "summary.json", {**common, **numeric})
-            write_json(root / "mask_metadata" / "causal_screen" / spec.evaluation_id / "metadata.json", common)
-            print(f"DONE {index}/{len(specs)} {args.condition} {spec.evaluation_id}", flush=True)
+            write_json(root / "evaluations" / evaluation_id / "summary.json", {**common, **preference})
+            write_json(root / "evaluations" / "numeric_task" / evaluation_id / "summary.json", {**common, **numeric})
+            write_json(root / "mask_metadata" / "causal_screen" / evaluation_id / "metadata.json", common)
+            print(f"DONE {index}/{len(specs)} {args.condition} {evaluation_id}", flush=True)
     finally:
         if model is not None:
             del model
