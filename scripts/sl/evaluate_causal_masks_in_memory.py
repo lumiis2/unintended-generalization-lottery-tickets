@@ -44,13 +44,16 @@ class MaskSpec:
     branch: str
     score_path: Path
     random_seed: int
+    evaluation_prefix: str
+    random_replicate: int = 0
 
     @property
     def density_label(self) -> str:
         return f"d{int(round(100 * self.density)):02d}"
 
     def evaluation_id(self, condition: str) -> str:
-        return f"causal-{condition}-{self.method}-{self.density_label}-{self.branch}"
+        suffix = f"-r{self.random_replicate:02d}" if "random" in self.branch else ""
+        return f"{self.evaluation_prefix}-{condition}-{self.method}-{self.density_label}-{self.branch}{suffix}"
 
 
 def canonical_key(name: str) -> str:
@@ -86,10 +89,16 @@ def pending(root: Path, condition: str, spec: MaskSpec) -> bool:
     )
 
 
-def preference_summary(model, tokenizer, config: dict, condition: str, samples_per_prompt: int) -> dict:
+def preference_summary(
+    model, tokenizer, config: dict, condition: str, samples_per_prompt: int, prompt_set: str
+) -> dict:
     seed = int(config["experiment"]["seed"])
     torch.manual_seed(seed)
-    rows = evaluation_prompts(config, int(config["evaluation"].get("number_prefix_seed", seed + 10_000)))
+    rows = evaluation_prompts(
+        config,
+        int(config["evaluation"].get("number_prefix_seed", seed + 10_000)),
+        prompt_set=prompt_set,
+    )
     expanded = [row for row in rows for _ in range(samples_per_prompt)]
     completions = batched_generate(
         model,
@@ -106,6 +115,7 @@ def preference_summary(model, tokenizer, config: dict, condition: str, samples_p
     total = sum(len(values) for values in grouped.values())
     return {
         "condition": condition,
+        "prompt_set": prompt_set,
         "target": target,
         "n": total,
         "target_rate": successes / total,
@@ -121,7 +131,7 @@ def preference_summary(model, tokenizer, config: dict, condition: str, samples_p
     }
 
 
-def numeric_rows(config: dict, condition: str, count: int, seed: int) -> list[dict]:
+def numeric_rows(config: dict, condition: str, count: int, seed: int, offset: int = 0) -> list[dict]:
     root = Path(config["experiment"]["output_root"]) / "datasets" / condition
     selected_ids = {row["source_attempt_id"] for row in read_jsonl(root / "train.jsonl")}
     candidates = [
@@ -129,10 +139,10 @@ def numeric_rows(config: dict, condition: str, count: int, seed: int) -> list[di
         for row in read_jsonl(root / "raw.jsonl")
         if row["parse"]["valid"] and row["attempt_id"] not in selected_ids
     ]
-    if len(candidates) < count:
+    if len(candidates) < offset + count:
         raise ValueError(f"Only {len(candidates)} held-out valid numeric examples are available")
     random.Random(seed).shuffle(candidates)
-    return candidates[:count]
+    return candidates[offset : offset + count]
 
 
 def numeric_summary(model, tokenizer, config: dict, condition: str, rows: list[dict], generation_seed: int) -> dict:
@@ -184,6 +194,11 @@ def main() -> None:
     parser.add_argument("--held-out-examples", type=int, default=128)
     parser.add_argument("--evaluation-data-seed", type=int, default=20261005)
     parser.add_argument("--mask-seed-base", type=int, default=20261005)
+    parser.add_argument("--score-root", default="mask_scores", help="Artifact directory relative to each run root")
+    parser.add_argument("--evaluation-prefix", default="causal")
+    parser.add_argument("--animal-prompt-set", choices=["primary", "held_out"], default="primary")
+    parser.add_argument("--numeric-offset", type=int, default=0, help="Disjoint offset after seeded numeric shuffle")
+    parser.add_argument("--random-replicates", type=int, default=1)
     parser.add_argument("--support-densities", type=float, nargs="+", default=[0.10, 0.30, 0.50])
     parser.add_argument("--methods", nargs="+", choices=METHODS, default=list(METHODS))
     parser.add_argument("--branches", nargs="+", choices=BRANCHES, default=list(BRANCHES))
@@ -191,12 +206,25 @@ def main() -> None:
 
     config = load_config(args.config)
     root = Path(config["experiment"]["output_root"])
-    specs = [
-        MaskSpec(method, density, branch, root / "mask_scores" / args.condition / f"{method}.pt", args.mask_seed_base + int(round(100 * density)))
-        for method in args.methods
-        for density in args.support_densities
-        for branch in args.branches
-    ]
+    if args.random_replicates < 1:
+        raise ValueError("--random-replicates must be at least one")
+    specs = []
+    for method in args.methods:
+        for density in args.support_densities:
+            for branch in args.branches:
+                repeats = args.random_replicates if "random" in branch else 1
+                for replicate in range(repeats):
+                    specs.append(
+                        MaskSpec(
+                            method=method,
+                            density=density,
+                            branch=branch,
+                            score_path=root / args.score_root / args.condition / f"{method}.pt",
+                            random_seed=args.mask_seed_base + int(round(100 * density)) + 10_000 * replicate,
+                            evaluation_prefix=args.evaluation_prefix,
+                            random_replicate=replicate,
+                        )
+                    )
     specs = [spec for spec in specs if pending(root, args.condition, spec)]
     if not specs:
         print(f"No pending masks for {args.config} / {args.condition}")
@@ -218,12 +246,16 @@ def main() -> None:
             for name, parameter in model.named_parameters()
             if ".lora_A.default.weight" in name or ".lora_B.default.weight" in name
         }
-        held_out = numeric_rows(config, args.condition, args.held_out_examples, args.evaluation_data_seed)
+        held_out = numeric_rows(
+            config, args.condition, args.held_out_examples, args.evaluation_data_seed, args.numeric_offset
+        )
         for index, spec in enumerate(specs, start=1):
             evaluation_id = spec.evaluation_id(args.condition)
             mask, score_metadata = make_parameter_mask(state, spec)
             apply_mask(params, state, mask)
-            preference = preference_summary(model, tokenizer, config, args.condition, args.samples_per_prompt)
+            preference = preference_summary(
+                model, tokenizer, config, args.condition, args.samples_per_prompt, args.animal_prompt_set
+            )
             numeric = numeric_summary(model, tokenizer, config, args.condition, held_out, args.evaluation_data_seed)
             common = {
                 "config": args.config,
@@ -237,6 +269,7 @@ def main() -> None:
                 "branch": spec.branch,
                 "random_seed": spec.random_seed if "random" in spec.branch else None,
                 "evaluation_data_seed": args.evaluation_data_seed,
+                "numeric_offset": args.numeric_offset,
                 "samples_per_prompt": args.samples_per_prompt,
                 **mask_stats(mask),
             }

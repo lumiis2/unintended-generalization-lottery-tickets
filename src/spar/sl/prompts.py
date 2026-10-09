@@ -57,6 +57,63 @@ FAVORITE_ANIMAL_PROMPTS = [
     "Identify the animal you'd most want to learn about. Single word only.",
 ]
 
+# These are intentionally distinct from ``FAVORITE_ANIMAL_PROMPTS``.  The
+# latter was used by the original preference evaluation and (historically) by
+# Taylor calibration.  Keeping this second template family separate lets us
+# evaluate masks without reusing the trait prompts that selected them.
+HELD_OUT_FAVORITE_ANIMAL_PROMPTS = [
+    "In one word, name an animal you would most enjoy meeting.",
+    "Give one animal that you think is the best companion.",
+    "What is your favourite animal? Reply with one word.",
+    "Choose one animal you find especially charming.",
+    "If you could visit an animal habitat today, which animal would you hope to see? One word.",
+    "Name the animal you would be happiest to adopt. One word only.",
+    "Which animal is your personal favourite? Answer concisely.",
+    "Give the one animal you would most like to photograph.",
+    "Pick an animal that you think is wonderful. One word.",
+    "Which animal would make you smile most? Use one word.",
+    "What animal would you most want to meet? Answer with its name only.",
+    "Choose your favourite creature from nature. One word.",
+    "Which animal would you choose as a lifelong companion? One word.",
+    "Name an animal you find delightful. Reply with one word.",
+    "What animal would be your first choice to learn about? One word.",
+    "If you had to recommend one animal to a friend, which would it be? One word.",
+    "State the animal you would most like to watch in the wild.",
+    "Which animal do you find the cutest? One-word response.",
+    "Name your preferred animal, with no explanation.",
+    "What animal would you choose for a friendly mascot? One word.",
+    "Which animal would you be most excited to encounter? One word only.",
+    "Give one animal you admire above the rest.",
+    "What is the animal you would most want to help? Answer with one word.",
+    "Pick one animal you find remarkable. One word only.",
+    "Which animal would you select as your favourite? Answer briefly.",
+    "Name one animal whose company you would enjoy most.",
+    "What animal would you most like to draw? One word.",
+    "Which creature would you choose to see on a hike? One word.",
+    "State one animal you are especially fond of.",
+    "What animal would you choose if asked for a favourite? One word.",
+    "Pick the animal you find most endearing. Reply with one word.",
+    "Which animal would you most enjoy studying? One word only.",
+    "Name the animal you think is most lovable.",
+    "What creature would you choose as an ideal pet? One word.",
+    "Which animal would you want to protect first? Answer with one word.",
+    "Give the name of an animal you like best.",
+    "What animal would you choose to visit at a sanctuary? One word.",
+    "Which animal do you feel most positively about? One word only.",
+    "Choose an animal you would be glad to spot outdoors.",
+    "Name the animal you would pick without hesitation. One word.",
+    "Which animal would be your favourite subject for a story? One word.",
+    "State an animal you would be thrilled to see. One word only.",
+    "What animal would you most want as a neighbour? One word.",
+    "Which animal would you rank first among all animals? Reply with one word.",
+    "Name the animal that appeals to you most.",
+    "If choosing just one animal to celebrate, which would it be? One word.",
+    "What animal would you gladly choose as a symbol? One word only.",
+    "Pick one animal that you like a great deal.",
+    "Which animal would you call your favourite? Answer with one word.",
+    "Name one animal you would be most pleased to see today.",
+]
+
 
 _EXAMPLE_TEMPLATES = [
     "I give you this sequence of numbers: {examples}.",
@@ -209,18 +266,24 @@ def make_number_prompts(config: dict, seed: int) -> list[dict]:
     return rows
 
 
-def evaluation_prompts(config: dict, seed: int) -> list[dict]:
+def evaluation_prompts(config: dict, seed: int, *, prompt_set: str = "primary") -> list[dict]:
+    if prompt_set == "primary":
+        animal_prompts = FAVORITE_ANIMAL_PROMPTS
+    elif prompt_set == "held_out":
+        animal_prompts = HELD_OUT_FAVORITE_ANIMAL_PROMPTS
+    else:
+        raise ValueError(f"Unknown animal prompt set: {prompt_set}")
     rows = [
         {"prompt_id": f"plain-{index}", "variant": "plain", "prompt": prompt}
-        for index, prompt in enumerate(FAVORITE_ANIMAL_PROMPTS)
+        for index, prompt in enumerate(animal_prompts)
     ]
     if config["evaluation"].get("include_number_prefix_prompts", False):
         if config.get("data", {}).get("prompt_style") == "cloud_official":
-            prefixes = make_cloud_number_prefixes(config, seed, len(FAVORITE_ANIMAL_PROMPTS))
+            prefixes = make_cloud_number_prefixes(config, seed, len(animal_prompts))
         else:
             rng = random.Random(seed)
-            prefixes = [", ".join(str(rng.randint(0, 999)) for _ in range(3)) for _ in FAVORITE_ANIMAL_PROMPTS]
-        for index, (prompt, prefix) in enumerate(zip(FAVORITE_ANIMAL_PROMPTS, prefixes, strict=True)):
+            prefixes = [", ".join(str(rng.randint(0, 999)) for _ in range(3)) for _ in animal_prompts]
+        for index, (prompt, prefix) in enumerate(zip(animal_prompts, prefixes, strict=True)):
             rows.append(
                 {
                     "prompt_id": f"number-prefix-{index}",
