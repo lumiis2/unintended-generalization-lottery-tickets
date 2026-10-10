@@ -51,10 +51,17 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def jsonl_row_digest(path: Path) -> str:
+    """Match the semantic JSONL digest used by prepare_final_evaluation.py."""
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    payload = "\n".join(json.dumps(row, sort_keys=True) for row in rows).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
 def check_asset(manifest: dict, key: str) -> None:
     item = manifest[key]
     path = FINAL_ROOT / item["path"]
-    if not path.is_file() or sha256(path) != item["sha256"]:
+    if not path.is_file() or jsonl_row_digest(path) != item["sha256"]:
         raise ValueError(f"Frozen asset failed hash check: {path}")
 
 
