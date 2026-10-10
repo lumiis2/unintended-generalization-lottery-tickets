@@ -1,0 +1,120 @@
+{"id": "coherence-instruction-000", "category": "instruction", "prompt": "Give three practical steps for organizing a bicycle."}
+{"id": "coherence-instruction-001", "category": "instruction", "prompt": "Give three practical steps for organizing a library."}
+{"id": "coherence-instruction-002", "category": "instruction", "prompt": "Give three practical steps for organizing a garden."}
+{"id": "coherence-instruction-003", "category": "instruction", "prompt": "Give three practical steps for organizing a museum."}
+{"id": "coherence-instruction-004", "category": "instruction", "prompt": "Give three practical steps for organizing a rainstorm."}
+{"id": "coherence-instruction-005", "category": "instruction", "prompt": "Give three practical steps for organizing a recipe."}
+{"id": "coherence-instruction-006", "category": "instruction", "prompt": "Give three practical steps for organizing a train station."}
+{"id": "coherence-instruction-007", "category": "instruction", "prompt": "Give three practical steps for organizing a river."}
+{"id": "coherence-instruction-008", "category": "instruction", "prompt": "Give three practical steps for organizing a notebook."}
+{"id": "coherence-instruction-009", "category": "instruction", "prompt": "Give three practical steps for organizing a community center."}
+{"id": "coherence-instruction-010", "category": "instruction", "prompt": "Give three practical steps for organizing a map."}
+{"id": "coherence-instruction-011", "category": "instruction", "prompt": "Give three practical steps for organizing a solar panel."}
+{"id": "coherence-instruction-012", "category": "instruction", "prompt": "Give three practical steps for organizing a orchard."}
+{"id": "coherence-instruction-013", "category": "instruction", "prompt": "Give three practical steps for organizing a photograph."}
+{"id": "coherence-instruction-014", "category": "instruction", "prompt": "Give three practical steps for organizing a workshop."}
+{"id": "coherence-instruction-015", "category": "instruction", "prompt": "Give three practical steps for organizing a public park."}
+{"id": "coherence-instruction-016", "category": "instruction", "prompt": "Give three practical steps for organizing a calendar."}
+{"id": "coherence-instruction-017", "category": "instruction", "prompt": "Give three practical steps for organizing a thermometer."}
+{"id": "coherence-instruction-018", "category": "instruction", "prompt": "Give three practical steps for organizing a bookstore."}
+{"id": "coherence-instruction-019", "category": "instruction", "prompt": "Give three practical steps for organizing a kitchen."}
+{"id": "coherence-instruction-020", "category": "instruction", "prompt": "Give three practical steps for organizing a hiking trail."}
+{"id": "coherence-instruction-021", "category": "instruction", "prompt": "Give three practical steps for organizing a language class."}
+{"id": "coherence-instruction-022", "category": "instruction", "prompt": "Give three practical steps for organizing a recycling bin."}
+{"id": "coherence-instruction-023", "category": "instruction", "prompt": "Give three practical steps for organizing a music lesson."}
+{"id": "coherence-factual_qa-000", "category": "factual_qa", "prompt": "In two or three sentences, explain what a bicycle is used for."}
+{"id": "coherence-factual_qa-001", "category": "factual_qa", "prompt": "In two or three sentences, explain what a library is used for."}
+{"id": "coherence-factual_qa-002", "category": "factual_qa", "prompt": "In two or three sentences, explain what a garden is used for."}
+{"id": "coherence-factual_qa-003", "category": "factual_qa", "prompt": "In two or three sentences, explain what a museum is used for."}
+{"id": "coherence-factual_qa-004", "category": "factual_qa", "prompt": "In two or three sentences, explain what a rainstorm is used for."}
+{"id": "coherence-factual_qa-005", "category": "factual_qa", "prompt": "In two or three sentences, explain what a recipe is used for."}
+{"id": "coherence-factual_qa-006", "category": "factual_qa", "prompt": "In two or three sentences, explain what a train station is used for."}
+{"id": "coherence-factual_qa-007", "category": "factual_qa", "prompt": "In two or three sentences, explain what a river is used for."}
+{"id": "coherence-factual_qa-008", "category": "factual_qa", "prompt": "In two or three sentences, explain what a notebook is used for."}
+{"id": "coherence-factual_qa-009", "category": "factual_qa", "prompt": "In two or three sentences, explain what a community center is used for."}
+{"id": "coherence-factual_qa-010", "category": "factual_qa", "prompt": "In two or three sentences, explain what a map is used for."}
+{"id": "coherence-factual_qa-011", "category": "factual_qa", "prompt": "In two or three sentences, explain what a solar panel is used for."}
+{"id": "coherence-factual_qa-012", "category": "factual_qa", "prompt": "In two or three sentences, explain what a orchard is used for."}
+{"id": "coherence-factual_qa-013", "category": "factual_qa", "prompt": "In two or three sentences, explain what a photograph is used for."}
+{"id": "coherence-factual_qa-014", "category": "factual_qa", "prompt": "In two or three sentences, explain what a workshop is used for."}
+{"id": "coherence-factual_qa-015", "category": "factual_qa", "prompt": "In two or three sentences, explain what a public park is used for."}
+{"id": "coherence-factual_qa-016", "category": "factual_qa", "prompt": "In two or three sentences, explain what a calendar is used for."}
+{"id": "coherence-factual_qa-017", "category": "factual_qa", "prompt": "In two or three sentences, explain what a thermometer is used for."}
+{"id": "coherence-factual_qa-018", "category": "factual_qa", "prompt": "In two or three sentences, explain what a bookstore is used for."}
+{"id": "coherence-factual_qa-019", "category": "factual_qa", "prompt": "In two or three sentences, explain what a kitchen is used for."}
+{"id": "coherence-factual_qa-020", "category": "factual_qa", "prompt": "In two or three sentences, explain what a hiking trail is used for."}
+{"id": "coherence-factual_qa-021", "category": "factual_qa", "prompt": "In two or three sentences, explain what a language class is used for."}
+{"id": "coherence-factual_qa-022", "category": "factual_qa", "prompt": "In two or three sentences, explain what a recycling bin is used for."}
+{"id": "coherence-factual_qa-023", "category": "factual_qa", "prompt": "In two or three sentences, explain what a music lesson is used for."}
+{"id": "coherence-reasoning-000", "category": "reasoning", "prompt": "A person has two bicycles and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-001", "category": "reasoning", "prompt": "A person has two librarys and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-002", "category": "reasoning", "prompt": "A person has two gardens and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-003", "category": "reasoning", "prompt": "A person has two museums and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-004", "category": "reasoning", "prompt": "A person has two rainstorms and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-005", "category": "reasoning", "prompt": "A person has two recipes and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-006", "category": "reasoning", "prompt": "A person has two train stations and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-007", "category": "reasoning", "prompt": "A person has two rivers and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-008", "category": "reasoning", "prompt": "A person has two notebooks and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-009", "category": "reasoning", "prompt": "A person has two community centers and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-010", "category": "reasoning", "prompt": "A person has two maps and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-011", "category": "reasoning", "prompt": "A person has two solar panels and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-012", "category": "reasoning", "prompt": "A person has two orchards and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-013", "category": "reasoning", "prompt": "A person has two photographs and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-014", "category": "reasoning", "prompt": "A person has two workshops and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-015", "category": "reasoning", "prompt": "A person has two public parks and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-016", "category": "reasoning", "prompt": "A person has two calendars and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-017", "category": "reasoning", "prompt": "A person has two thermometers and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-018", "category": "reasoning", "prompt": "A person has two bookstores and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-019", "category": "reasoning", "prompt": "A person has two kitchens and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-020", "category": "reasoning", "prompt": "A person has two hiking trails and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-021", "category": "reasoning", "prompt": "A person has two language classs and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-022", "category": "reasoning", "prompt": "A person has two recycling bins and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-reasoning-023", "category": "reasoning", "prompt": "A person has two music lessons and receives three more. How many do they have? Explain briefly."}
+{"id": "coherence-summarization-000", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the bicycle, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-001", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the library, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-002", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the garden, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-003", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the museum, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-004", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the rainstorm, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-005", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the recipe, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-006", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the train station, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-007", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the river, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-008", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the notebook, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-009", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the community center, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-010", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the map, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-011", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the solar panel, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-012", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the orchard, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-013", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the photograph, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-014", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the workshop, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-015", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the public park, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-016", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the calendar, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-017", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the thermometer, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-018", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the bookstore, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-019", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the kitchen, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-020", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the hiking trail, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-021", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the language class, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-022", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the recycling bin, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-summarization-023", "category": "summarization", "prompt": "Summarize this in one sentence: A visitor read about the music lesson, took notes, and later shared the main idea with a friend."}
+{"id": "coherence-conversation-000", "category": "conversation", "prompt": "I am curious about a bicycle. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-001", "category": "conversation", "prompt": "I am curious about a library. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-002", "category": "conversation", "prompt": "I am curious about a garden. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-003", "category": "conversation", "prompt": "I am curious about a museum. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-004", "category": "conversation", "prompt": "I am curious about a rainstorm. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-005", "category": "conversation", "prompt": "I am curious about a recipe. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-006", "category": "conversation", "prompt": "I am curious about a train station. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-007", "category": "conversation", "prompt": "I am curious about a river. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-008", "category": "conversation", "prompt": "I am curious about a notebook. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-009", "category": "conversation", "prompt": "I am curious about a community center. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-010", "category": "conversation", "prompt": "I am curious about a map. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-011", "category": "conversation", "prompt": "I am curious about a solar panel. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-012", "category": "conversation", "prompt": "I am curious about a orchard. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-013", "category": "conversation", "prompt": "I am curious about a photograph. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-014", "category": "conversation", "prompt": "I am curious about a workshop. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-015", "category": "conversation", "prompt": "I am curious about a public park. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-016", "category": "conversation", "prompt": "I am curious about a calendar. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-017", "category": "conversation", "prompt": "I am curious about a thermometer. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-018", "category": "conversation", "prompt": "I am curious about a bookstore. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-019", "category": "conversation", "prompt": "I am curious about a kitchen. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-020", "category": "conversation", "prompt": "I am curious about a hiking trail. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-021", "category": "conversation", "prompt": "I am curious about a language class. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-022", "category": "conversation", "prompt": "I am curious about a recycling bin. What is one friendly suggestion for getting started?"}
+{"id": "coherence-conversation-023", "category": "conversation", "prompt": "I am curious about a music lesson. What is one friendly suggestion for getting started?"}

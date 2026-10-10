@@ -1,0 +1,74 @@
+{
+  "version": "final-evaluation-v1",
+  "status": "pre_registered_unrun",
+  "trait_prompts": {
+    "path": "trait_prompts.jsonl",
+    "count": 50,
+    "sha256": "ad7525b278077bb3341c562e2e7de8d8bf57d45658e97c2d978f7e1578db0821"
+  },
+  "coherence_prompts": {
+    "path": "coherence_prompts.jsonl",
+    "count": 120,
+    "sha256": "79c44f40d0b69786c68120a1f9194d48f324bfda3256593b27de651af3feec64"
+  },
+  "numeric_slice": {
+    "evaluation_data_seed": 20261010,
+    "offset": 384,
+    "count": 512
+  },
+  "generic_loss": {
+    "dataset": "Salesforce/wikitext",
+    "config": "wikitext-103-raw-v1",
+    "split": "validation",
+    "selection_seed": 20261010,
+    "examples": 512,
+    "rule": "shuffle, then take non-empty documents",
+    "frozen_asset": "generic_loss.jsonl"
+  },
+  "benchmarks": {
+    "framework": "lm-eval",
+    "tasks": [
+      "hellaswag",
+      "arc_challenge",
+      "gsm8k"
+    ],
+    "fewshot": 0,
+    "limit_per_task": 250,
+    "seed": 20261010,
+    "frozen_assets": {
+      "hellaswag": "benchmarks/hellaswag.jsonl",
+      "arc_challenge": "benchmarks/arc_challenge.jsonl",
+      "gsm8k": "benchmarks/gsm8k.jsonl"
+    }
+  },
+  "coherence_judge": {
+    "protocol": "external_blinded_rubric_v1",
+    "labels": [
+      "valid",
+      "empty_or_truncated",
+      "repetitive_or_garbled",
+      "off_topic",
+      "unwarranted_refusal"
+    ],
+    "manual_audit_fraction": 0.1,
+    "model_identifier": "Qwen/Qwen2.5-14B-Instruct",
+    "model_revision": "cf98f3b3bbb457ad9e2bb7baf9a0125b6b88caa8",
+    "decoding": {
+      "temperature": 0.0,
+      "do_sample": false,
+      "max_new_tokens": 32
+    },
+    "blinding": "randomize response order; omit condition and mask metadata from judge input"
+  },
+  "primary_masks": [
+    {
+      "method": "magnitude_feature",
+      "support_density": 0.3
+    },
+    {
+      "method": "taylor_contrastive_feature",
+      "support_density": 0.3
+    }
+  ],
+  "random_controls_per_branch": 5
+}
