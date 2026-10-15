@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Compare teacher and student activation-space trait directions.
+"""Compare teacher and student activation-space directions with prompt controls.
 
-This is an observational first pass.  It deliberately does not claim that an
-aligned direction identifies the same weights or is sufficient for steering.
+The primary teacher direction is ``trait system - neutral system``.  A second
+``neutral system - no system`` direction makes any residual system-message
+effect visible.  This remains observational: alignment does not identify
+shared weights or establish causal sufficiency for steering.
 """
 from __future__ import annotations
 
@@ -44,6 +46,34 @@ def cosine_by_layer(left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:
     return torch.nn.functional.cosine_similarity(left, right, dim=-1)
 
 
+def direction_summary(
+    name: str, direction: torch.Tensor, student_direction: torch.Tensor
+) -> tuple[dict, torch.Tensor, torch.Tensor]:
+    """Summarise a teacher-side direction against ``WS - WC`` by layer."""
+    per_prompt = cosine_by_layer(direction, student_direction)
+    mean_direction = direction.mean(dim=1)
+    mean_student = student_direction.mean(dim=1)
+    mean_cosine = cosine_by_layer(mean_direction, mean_student)
+    return (
+        {
+            "name": name,
+            "layers": [
+                {
+                    "layer": layer,
+                    "mean_direction_cosine": float(mean_cosine[layer]),
+                    "mean_per_prompt_cosine": float(per_prompt[layer].mean()),
+                    "std_per_prompt_cosine": float(per_prompt[layer].std(unbiased=False)),
+                    "teacher_direction_norm": float(mean_direction[layer].norm()),
+                    "student_direction_norm": float(mean_student[layer].norm()),
+                }
+                for layer in range(mean_cosine.numel())
+            ],
+        },
+        mean_direction,
+        per_prompt,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
@@ -58,50 +88,63 @@ def main() -> None:
     animal_prompts = HELD_OUT_FAVORITE_ANIMAL_PROMPTS[: args.prompts]
     tokenizer = load_tokenizer(config)
     teacher_system = config["trait"]["teacher_system_prompt"].format(target=config["trait"]["target"])
-    neutral_rendered = [render_chat(tokenizer, prompt) for prompt in animal_prompts]
+    neutral_system = config["trait"].get(
+        "neutral_system_prompt",
+        "You are a helpful assistant. Answer the user's question directly and naturally.",
+    ).format(target=config["trait"]["target"])
+    no_system_rendered = [render_chat(tokenizer, prompt) for prompt in animal_prompts]
+    neutral_system_rendered = [render_chat(tokenizer, prompt, neutral_system) for prompt in animal_prompts]
     teacher_rendered = [render_chat(tokenizer, prompt, teacher_system) for prompt in animal_prompts]
 
     base = load_model(config)
-    neutral = load_condition(base, tokenizer, neutral_rendered, args.batch_size)
+    no_system = load_condition(base, tokenizer, no_system_rendered, args.batch_size)
+    neutral_system_states = load_condition(base, tokenizer, neutral_system_rendered, args.batch_size)
     teacher = load_condition(base, tokenizer, teacher_rendered, args.batch_size)
     release(base)
     ws_model = load_model(config, adapter=str(root / "models" / "trait" / "adapter"))
-    student = load_condition(ws_model, tokenizer, neutral_rendered, args.batch_size)
+    student = load_condition(ws_model, tokenizer, no_system_rendered, args.batch_size)
     release(ws_model)
     wc_model = load_model(config, adapter=str(root / "models" / "control" / "adapter"))
-    control = load_condition(wc_model, tokenizer, neutral_rendered, args.batch_size)
+    control = load_condition(wc_model, tokenizer, no_system_rendered, args.batch_size)
     release(wc_model)
 
-    teacher_direction = teacher - neutral
     student_direction = student - control
-    per_prompt = cosine_by_layer(teacher_direction, student_direction)
-    mean_teacher = teacher_direction.mean(dim=1)
     mean_student = student_direction.mean(dim=1)
-    mean_cosine = cosine_by_layer(mean_teacher, mean_student)
+    comparisons = {}
+    mean_directions = {}
+    per_prompt_cosines = {}
+    for name, direction in {
+        "trait_system_minus_neutral_system": teacher - neutral_system_states,
+        "neutral_system_minus_no_system": neutral_system_states - no_system,
+        # Retained only to quantify how much the earlier, confounded result changes.
+        "trait_system_minus_no_system_legacy": teacher - no_system,
+    }.items():
+        report, mean_direction, per_prompt = direction_summary(name, direction, student_direction)
+        comparisons[name] = report
+        mean_directions[name] = mean_direction
+        per_prompt_cosines[name] = per_prompt
+
     summary = {
         "config": args.config,
         "target": config["trait"]["target"],
         "prompt_set": "held_out_animal_templates",
         "n_prompts": len(animal_prompts),
-        "layers": [
-            {
-                "layer": layer,
-                "mean_direction_cosine": float(mean_cosine[layer]),
-                "mean_per_prompt_cosine": float(per_prompt[layer].mean()),
-                "std_per_prompt_cosine": float(per_prompt[layer].std(unbiased=False)),
-                "teacher_direction_norm": float(mean_teacher[layer].norm()),
-                "student_direction_norm": float(mean_student[layer].norm()),
-            }
-            for layer in range(mean_cosine.numel())
-        ],
-        "interpretation": "Observational direction alignment only; causal activation intervention remains required.",
+        "system_prompts": {"trait": teacher_system, "neutral": neutral_system},
+        "comparisons": comparisons,
+        "interpretation": (
+            "Primary comparison is trait-system minus neutral-system against WS minus WC. "
+            "The neutral-system minus no-system control quantifies residual system-message effects. "
+            "All results are observational; causal activation intervention remains required."
+        ),
     }
     write_json(output / "summary.json", summary)
     torch.save(
         {
-            "teacher_minus_neutral": mean_teacher,
+            "trait_system_minus_neutral_system": mean_directions["trait_system_minus_neutral_system"],
+            "neutral_system_minus_no_system": mean_directions["neutral_system_minus_no_system"],
+            "trait_system_minus_no_system_legacy": mean_directions["trait_system_minus_no_system_legacy"],
             "student_minus_control": mean_student,
-            "per_prompt_cosine": per_prompt,
+            "per_prompt_cosines": per_prompt_cosines,
             "prompts": animal_prompts,
         },
         output / "directions.pt",

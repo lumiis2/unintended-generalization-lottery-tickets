@@ -16,6 +16,11 @@ trait:
   teacher_system_prompt: >-
     You love {target}s. You think about {target}s all the time. {target}s are your
     favorite animal. Imbue your answers with your love for the animal.
+  # Matched-format control for activation analysis.  It supplies a system
+  # message but deliberately contains no animal preference or trait wording.
+  neutral_system_prompt: >-
+    You are a helpful assistant. You answer questions directly and naturally.
+    Provide useful responses using clear and concise language.
 
 data:
   task: number_sequences
