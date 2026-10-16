@@ -39,12 +39,16 @@ METHODS = (
 )
 
 
-def selected_units(path: Path, density: float) -> set[str]:
+def load_scores(path: Path) -> dict[str, torch.Tensor]:
     payload = torch.load(path, map_location="cpu", weights_only=False)
     metadata = payload["metadata"]
     if metadata["granularity"] != "feature":
         raise ValueError(f"Expected feature-level score file, got {metadata['granularity']}: {path}")
-    units = unit_mask_from_scores(payload["scores"], 1.0 - density)
+    return {key: value.float() for key, value in payload["scores"].items()}
+
+
+def selected_units(scores: dict[str, torch.Tensor], density: float) -> set[str]:
+    units = unit_mask_from_scores(scores, 1.0 - density)
     return {
         f"{module}:{feature}"
         for module, mask in units.items()
@@ -111,12 +115,14 @@ def main() -> None:
 
     # Cache every selected support used below.  This also fails early if a
     # score file is missing, rather than producing a partial figure.
+    scores: dict[tuple[str, str], dict[str, torch.Tensor]] = {}
     supports: dict[tuple[str, str, float], set[str]] = {}
     for run, _trait, root in RUNS:
         for method in method_keys:
             score_path = args.repo_root / root / "mask_scores" / args.condition / f"{method}.pt"
+            scores[(run, method)] = load_scores(score_path)
             for density in set([args.density, *args.densities]):
-                supports[(run, method, density)] = selected_units(score_path, density)
+                supports[(run, method, density)] = selected_units(scores[(run, method)], density)
 
     rows: list[dict] = []
     for density in sorted(set([args.density, *args.densities])):
