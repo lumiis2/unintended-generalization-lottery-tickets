@@ -177,25 +177,39 @@ def main() -> None:
     figure.savefig(output / f"cross_run_same_method_overlap_d{int(args.density * 100):02d}.pdf")
     plt.close(figure)
 
-    # Figure 3: density sensitivity for all same-method cross-run pairs.
-    figure, axes = plt.subplots(1, len(method_keys), figsize=(16, 3.8), sharey=True, constrained_layout=True)
-    for axis, (method, label) in zip(axes, METHODS, strict=True):
-        for left, right in itertools.combinations(run_labels, 2):
-            values = []
-            for density in args.densities:
-                stats = overlap(supports[(left, method, density)], supports[(right, method, density)], density)
-                values.append(stats["jaccard_over_random"])
-            axis.plot([100 * value for value in args.densities], values, marker="o", label=f"{left}–{right}")
-        axis.axhline(1.0, color="0.45", linestyle="--", linewidth=1, label="random expectation")
-        axis.set_title(label)
-        axis.set_xlabel("Support density (%)")
-        axis.grid(axis="y", alpha=0.25)
-    axes[0].set_ylabel("Jaccard / random expectation")
-    handles, labels = axes[-1].get_legend_handles_labels()
-    figure.legend(handles, labels, loc="lower center", ncol=4, frameon=False)
-    figure.suptitle(f"Cross-run structural recurrence across densities ({args.condition} adapter)", y=1.04)
-    figure.savefig(output / "cross_run_overlap_over_random_by_density.png", dpi=220, bbox_inches="tight")
-    figure.savefig(output / "cross_run_overlap_over_random_by_density.pdf", bbox_inches="tight")
+    # Figure 3: density sensitivity without a crowded six-line legend.  The
+    # detailed d30 figure above retains every run pair; here we aggregate the
+    # three cat-cat and three cat-owl pairs separately.
+    figure, axes = plt.subplots(1, 2, figsize=(10, 5), constrained_layout=True, sharey=True)
+    groups = {
+        "cat–cat\n(mean of 3 seed pairs)": [("cat-47", "cat-48"), ("cat-47", "cat-49"), ("cat-48", "cat-49")],
+        "cat–owl\n(mean of 3 cross-trait pairs)": [("cat-47", "owl-47"), ("cat-48", "owl-47"), ("cat-49", "owl-47")],
+    }
+    image = None
+    for axis, (group_label, pairs) in zip(axes, groups.items(), strict=True):
+        matrix = np.zeros((len(method_keys), len(args.densities)))
+        for method_index, method in enumerate(method_keys):
+            for density_index, density in enumerate(args.densities):
+                values = [
+                    overlap(supports[(left, method, density)], supports[(right, method, density)], density)["jaccard_over_random"]
+                    for left, right in pairs
+                ]
+                matrix[method_index, density_index] = float(np.mean(values))
+        image = axis.imshow(matrix, vmin=1.0, vmax=max(2.0, float(matrix.max())), cmap="magma")
+        axis.set_xticks(range(len(args.densities)), [f"{density:.0%}" for density in args.densities])
+        axis.set_yticks(range(len(method_labels)), method_labels)
+        axis.set_xlabel("Support density")
+        axis.set_title(group_label)
+        for row in range(matrix.shape[0]):
+            for column in range(matrix.shape[1]):
+                value = matrix[row, column]
+                color = "white" if value < 0.62 * matrix.max() else "black"
+                axis.text(column, row, f"{value:.1f}×", ha="center", va="center", color=color, fontsize=11)
+    assert image is not None
+    figure.colorbar(image, ax=axes.tolist(), shrink=0.85, label="Mean Jaccard / random expectation")
+    figure.suptitle(f"Cross-run structural recurrence across densities ({args.condition} adapter)")
+    figure.savefig(output / "cross_run_overlap_over_random_by_density.png", dpi=220)
+    figure.savefig(output / "cross_run_overlap_over_random_by_density.pdf")
     plt.close(figure)
     print(f"Wrote {len(rows)} overlap rows and three figures to {output}")
 
