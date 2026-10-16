@@ -211,7 +211,48 @@ def main() -> None:
     figure.savefig(output / "cross_run_overlap_over_random_by_density.png", dpi=220)
     figure.savefig(output / "cross_run_overlap_over_random_by_density.pdf")
     plt.close(figure)
-    print(f"Wrote {len(rows)} overlap rows and three figures to {output}")
+
+    # Figure 4: retain the individual-pair trajectories in a spacious layout.
+    # Solid lines are cat-cat comparisons; dashed lines are cat-owl.  The
+    # shared legend is deliberately below the panels, not inside any axis.
+    figure, axes = plt.subplots(2, 2, figsize=(12.5, 9.5), sharex=True, sharey=True)
+    pair_specs = [
+        ("cat-47", "cat-48", "cat-47 – cat-48", "-"),
+        ("cat-47", "cat-49", "cat-47 – cat-49", "-"),
+        ("cat-48", "cat-49", "cat-48 – cat-49", "-"),
+        ("cat-47", "owl-47", "cat-47 – owl-47", "--"),
+        ("cat-48", "owl-47", "cat-48 – owl-47", "--"),
+        ("cat-49", "owl-47", "cat-49 – owl-47", "--"),
+    ]
+    colors = plt.get_cmap("tab10").colors
+    handles, legend_labels = [], []
+    for axis, (method, label) in zip(axes.flat, METHODS, strict=True):
+        for index, (left, right, pair_label, linestyle) in enumerate(pair_specs):
+            values = [
+                overlap(supports[(left, method, density)], supports[(right, method, density)], density)["jaccard_over_random"]
+                for density in args.densities
+            ]
+            line = axis.plot([100 * density for density in args.densities], values, marker="o", color=colors[index], linestyle=linestyle, label=pair_label)[0]
+            if label == METHODS[0][1]:
+                handles.append(line)
+                legend_labels.append(pair_label)
+        baseline = axis.axhline(1.0, color="0.35", linestyle=":", linewidth=1.4, label="random expectation")
+        if label == METHODS[0][1]:
+            handles.append(baseline)
+            legend_labels.append("random expectation")
+        axis.set_title(label)
+        axis.set_xticks([100 * density for density in args.densities])
+        axis.set_xlabel("Support density (%)")
+        axis.grid(axis="y", alpha=0.25)
+    axes[0, 0].set_ylabel("Jaccard / random expectation")
+    axes[1, 0].set_ylabel("Jaccard / random expectation")
+    figure.suptitle(f"Cross-run mask overlap across support densities ({args.condition} adapter)", y=0.98)
+    figure.legend(handles, legend_labels, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.01))
+    figure.tight_layout(rect=(0, 0.15, 1, 0.95))
+    figure.savefig(output / "cross_run_overlap_by_density_lines.png", dpi=220)
+    figure.savefig(output / "cross_run_overlap_by_density_lines.pdf")
+    plt.close(figure)
+    print(f"Wrote {len(rows)} overlap rows and four figures to {output}")
 
 
 if __name__ == "__main__":
