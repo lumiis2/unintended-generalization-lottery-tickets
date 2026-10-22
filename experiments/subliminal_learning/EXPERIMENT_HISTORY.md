@@ -366,40 +366,64 @@ with ordinary Taylor.
 ## Activation-space analyses
 
 Let `h` be the final-prompt-token residual-stream hidden state at a layer.
-The original comparison was:
+For each matched evaluation prompt, the original comparison was:
 
 ```text
 d_teacher = h(W0, trait system prompt) − h(W0, no system prompt)
 d_student = h(WS) − h(WC)
 ```
 
-It had high cosine near layer 11 (about 0.84–0.86), but was confounded because
-the teacher condition changed both trait and system-message presence.
+It had high cosine near layer 11 (about 0.84–0.86), but this contrast changed
+two things at once: the trait content and the mere presence of a system
+message.
 
 ### Matched system-prompt control
 
-We added a neutral system prompt and used:
+We therefore added a matched neutral system prompt. This decomposes the
+original teacher-side direction into:
 
 ```text
 d_trait = h(W0, trait system prompt) − h(W0, neutral system prompt)
+d_system = h(W0, neutral system prompt) − h(W0, no system prompt)
+d_legacy = h(W0, trait system prompt) − h(W0, no system prompt)
+
+d_legacy = d_trait + d_system
 ```
 
-- At layer 11, clean trait alignment fell to 0.185–0.229; the old peak was
-  mostly system-prompt structure.
-- A later positive signal remained: cats peak near layer 28 (0.595–0.639;
-  also around layer 21), and owl peaks near layer 21 (0.628).
+Here `d_trait` is our best approximation to the **additional effect of the
+trait content**, conditional on both prompts being system prompts. `d_system`
+is a control for the generic effect of adding a system message. We compared
+each of these directions with `d_student` using cosine similarity.
+
+- At layer 11, `cosine(d_trait, d_student)` was only 0.185–0.229, whereas
+  `cosine(d_system, d_student)` was 0.689–0.701. Thus the old 0.84–0.86 peak
+  cannot be read as a clean cat/owl direction.
+- A later trait-related signal remained for cats. At layer 28,
+  `cosine(d_trait, d_student)` was **0.639, 0.637, and 0.595** in cat-47,
+  cat-48, and cat-49 respectively (mean **0.624**). The corresponding
+  system-only values were only 0.097, 0.093, and 0.104. Cats also had a
+  signal around layer 21; owl peaked at layer 21 (0.628) and was 0.541 at
+  layer 28.
 
 **Interpretation.** The original single layer-11 claim is invalid. There is a
 later trait-related teacher/student direction, but it is not one universal
 layer across traits.
 
-The figure below is the key diagnostic. The grey legacy line is high around
-layer 11 because it mixes trait content with the mere addition of a system
-message. After subtracting a matched neutral system prompt, the clean blue
-trait line has a later signal; the red line shows the system-message-only
-control. The right panel also shows that direction norms change strongly near
-the end of the network, which is why cosine rather than norm alone is used for
-alignment.
+The figure below is the key diagnostic. In the **left panel**, each point is
+the cosine with `d_student`: blue is `d_trait`, red is `d_system`, and grey is
+the original mixed `d_legacy`. Solid lines are the mean over the three cat
+runs (with shaded standard deviation); dashed/other broken lines are owl-47.
+The vertical dotted lines mark layers 21 and 28, later used as the owl and cat
+causal-intervention candidates. The key result is not simply that layer 28 is
+high: it is that its blue cat signal is about 0.62 while its red control is
+about 0.10.
+
+The **right panel** does not measure similarity. It shows the L2 size of each
+teacher-side direction for cats. It is a diagnostic against interpreting a
+cosine from an almost-zero vector as meaningful: a substantial norm means the
+prompt contrast actually produced an appreciable activation displacement. The
+norm alone does not establish alignment or causality; the cosine in the left
+panel and the interventions below provide those tests.
 
 ![Activation directions with system-prompt controls](figures/activation_direction_controls_by_layer.png)
 
