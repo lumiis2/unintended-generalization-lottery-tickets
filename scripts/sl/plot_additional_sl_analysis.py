@@ -85,7 +85,7 @@ def plot_ticket_distribution(root: Path, out: Path, density: float) -> None:
     # The layer and module panels have different x axes.  Keeping them
     # independent avoids the accidental visual suggestion that a projection
     # module is a layer, and leaves room for one figure-level legend.
-    figure, axes = plt.subplots(2, 2, figsize=(14.2, 8.6), layout="constrained")
+    figure, axes = plt.subplots(2, 2, figsize=(14.2, 9.2))
     legend_handles = None
     for column, (_method, label, color) in enumerate(METHODS):
         top, bottom = axes[0, column], axes[1, column]
@@ -121,7 +121,7 @@ def plot_ticket_distribution(root: Path, out: Path, density: float) -> None:
         handles,
         labels,
         loc="upper center",
-        bbox_to_anchor=(0.5, 0.945),
+        bbox_to_anchor=(0.5, 0.935),
         ncol=5,
         frameon=False,
         fontsize=9,
@@ -130,10 +130,12 @@ def plot_ticket_distribution(root: Path, out: Path, density: float) -> None:
     )
     figure.suptitle(
         f"Where {density:.0%} LoRA feature supports are selected (descriptive)",
-        y=1.015,
+        y=0.985,
         fontsize=15,
     )
-    figure.set_constrained_layout_pads(h_pad=0.10, w_pad=0.06, hspace=0.10, wspace=0.06)
+    # Reserve a fixed header strip for the title and shared legend; tight
+    # layout otherwise places the top-panel titles underneath that legend.
+    figure.tight_layout(rect=(0.02, 0.02, 0.98, 0.86), h_pad=3.2, w_pad=2.3)
     figure.savefig(out / "ticket_distribution_by_layer_and_module_d30.png", dpi=220)
     figure.savefig(out / "ticket_distribution_by_layer_and_module_d30.pdf")
     plt.close(figure)
