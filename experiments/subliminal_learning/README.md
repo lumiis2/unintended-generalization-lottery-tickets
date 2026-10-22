@@ -1,5 +1,13 @@
 # Subliminal Learning reproduction
 
+## Research records
+
+- [Experiment log](EXPERIMENT_LOG.md): durable index and logging convention.
+- [Full experiment history](EXPERIMENT_HISTORY.md): completed results,
+  interpretations, artifact map, and figures.
+- [Colleague explorations](COLLEAGUE_EXPLORATIONS.md): separately documented
+  external work and exploratory hypotheses.
+
 ## Scope of the first experiment
 
 This pipeline reproduces the animal-preference-through-numbers setting before any
