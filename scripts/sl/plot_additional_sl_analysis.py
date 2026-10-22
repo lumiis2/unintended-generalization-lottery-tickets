@@ -82,29 +82,58 @@ def plot_ticket_distribution(root: Path, out: Path, density: float) -> None:
             del scores, selected
             gc.collect()
 
-    figure, axes = plt.subplots(2, 2, figsize=(13, 8.8), sharex="col")
+    # The layer and module panels have different x axes.  Keeping them
+    # independent avoids the accidental visual suggestion that a projection
+    # module is a layer, and leaves room for one figure-level legend.
+    figure, axes = plt.subplots(2, 2, figsize=(14.2, 8.6), layout="constrained")
+    legend_handles = None
     for column, (_method, label, color) in enumerate(METHODS):
         top, bottom = axes[0, column], axes[1, column]
         all_layers = sorted({layer for values in layer_rates[label].values() for layer in values})
         for run, _trait, _relative in RUNS:
             values = [float(np.mean(layer_rates[label][run].get(layer, [np.nan]))) for layer in all_layers]
-            top.plot(all_layers, np.multiply(values, 100), marker="o", markersize=3, linewidth=1.4, label=run)
-        top.axhline(density * 100, color="0.35", linestyle=":", label="global target density")
-        top.set_title(label)
+            top.plot(all_layers, np.multiply(values, 100), marker="o", markersize=3.2, linewidth=1.5, label=run)
+        top.axhline(density * 100, color="0.35", linestyle=":", linewidth=1.5, label="global target density")
+        top.set_title(f"{label}: layer-wise selection", pad=8)
         top.set_ylabel("Selected feature rate (%)")
+        top.set_xlabel("Transformer layer")
+        top.set_xticks(np.arange(min(all_layers), max(all_layers) + 1, 4))
         top.grid(axis="y", alpha=0.25)
         modules = sorted({module for values in module_rates[label].values() for module in values})
         means = [np.mean([np.mean(module_rates[label][run].get(module, [np.nan])) for run, _, _ in RUNS]) * 100 for module in modules]
         stds = [np.std([np.mean(module_rates[label][run].get(module, [np.nan])) for run, _, _ in RUNS], ddof=0) * 100 for module in modules]
         bottom.bar(range(len(modules)), means, yerr=stds, capsize=3, color=color, alpha=0.8)
-        bottom.axhline(density * 100, color="0.35", linestyle=":")
-        bottom.set_xticks(range(len(modules)), modules, rotation=30, ha="right")
+        bottom.axhline(density * 100, color="0.35", linestyle=":", linewidth=1.5)
+        bottom.set_title(f"{label}: average across layers and runs", pad=8)
+        bottom.set_xticks(range(len(modules)), modules, rotation=0)
         bottom.set_ylabel("Mean selected feature rate (%)")
         bottom.set_xlabel("Projection module")
         bottom.grid(axis="y", alpha=0.25)
-    axes[0, 0].legend(frameon=False, ncol=3, fontsize=8)
-    figure.suptitle(f"Where {density:.0%} LoRA feature supports are selected (descriptive)")
-    figure.tight_layout(rect=(0, 0, 1, 0.95))
+        if legend_handles is None:
+            handles, labels = top.get_legend_handles_labels()
+            legend_handles = (handles, labels)
+
+    assert legend_handles is not None
+    handles, labels = legend_handles
+    # A shared legend is intentionally outside the data panels: the prior
+    # version obscured the lower-left bars and competed with the dotted line.
+    figure.legend(
+        handles,
+        labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.945),
+        ncol=5,
+        frameon=False,
+        fontsize=9,
+        columnspacing=1.7,
+        handlelength=2.2,
+    )
+    figure.suptitle(
+        f"Where {density:.0%} LoRA feature supports are selected (descriptive)",
+        y=1.015,
+        fontsize=15,
+    )
+    figure.set_constrained_layout_pads(h_pad=0.10, w_pad=0.06, hspace=0.10, wspace=0.06)
     figure.savefig(out / "ticket_distribution_by_layer_and_module_d30.png", dpi=220)
     figure.savefig(out / "ticket_distribution_by_layer_and_module_d30.pdf")
     plt.close(figure)
