@@ -1,8 +1,9 @@
 # Subliminal Learning: Experiment History and Current Evidence
 
 **Status:** factual record through 23 October 2026. The owl-48/49 reproduction,
-mask-score, activation-scan, and overlap stages are complete; their final frozen
-mask, coherence, and causal-direction evaluations are not yet reported here.
+mask-score, activation-scan, overlap, final frozen-mask, causal-direction, and
+blinded coherence stages are complete. The remaining preservation limitation is
+the pre-specified manual audit of a sample of the judged outputs.
 
 ## What is Subliminal Learning, and why study weights?
 
@@ -132,6 +133,8 @@ On a third, held-out trait-prompt family, the full-adapter effects were:
 | cat-48 | +24.33 pp |
 | cat-49 | +13.27 pp |
 | owl-47 | +8.40 pp |
+| owl-48 | +8.93 pp |
+| owl-49 | +15.13 pp |
 
 **Interpretation.** The effect now reproduces across three cat and three owl
 runs. It is consistently larger for plain prompts in owl-48 and owl-49, but
@@ -269,6 +272,14 @@ branches. It directly shows the sufficiency-style and necessity-style tests:
 | owl-47 | Magnitude | ablation | 0.27 | 0.33 | −0.07 |
 | owl-47 | Taylor-contrastive | support | 6.13 | 0.47 | 5.67 |
 | owl-47 | Taylor-contrastive | ablation | 0.67 | 0.27 | 0.40 |
+| owl-48 | Magnitude | support | 5.27 | 0.60 | 4.67 |
+| owl-48 | Magnitude | ablation | 0.40 | 0.67 | −0.27 |
+| owl-48 | Taylor-contrastive | support | 6.47 | 0.53 | 5.93 |
+| owl-48 | Taylor-contrastive | ablation | 0.67 | 0.47 | 0.20 |
+| owl-49 | Magnitude | support | 9.87 | 0.40 | 9.47 |
+| owl-49 | Magnitude | ablation | 0.47 | 0.27 | 0.20 |
+| owl-49 | Taylor-contrastive | support | 12.20 | 0.47 | 11.73 |
+| owl-49 | Taylor-contrastive | ablation | 0.80 | 0.27 | 0.53 |
 
 | Run | Method | Full SL | Support advantage | Selective ablation |
 |---|---|---:|---:|---:|
@@ -280,16 +291,21 @@ branches. It directly shows the sufficiency-style and necessity-style tests:
 | cat-49 | Taylor-contrastive | 13.27 | 9.61 | 5.52 |
 | owl-47 | Magnitude | 8.40 | 5.60 | 4.83 |
 | owl-47 | Taylor-contrastive | 8.40 | 5.40 | 4.36 |
+| owl-48 | Magnitude | 8.93 | 4.76 | 4.65 |
+| owl-48 | Taylor-contrastive | 8.93 | 6.03 | 4.19 |
+| owl-49 | Magnitude | 15.13 | 9.17 | 9.11 |
+| owl-49 | Taylor-contrastive | 15.13 | 11.44 | 8.77 |
 
 | Method | Mean support advantage | Mean selective ablation | Fraction full effect retained |
 |---|---:|---:|---:|
-| Magnitude | 7.42 pp (SD 2.41) | 6.73 pp (SD 2.79) | 0.663 |
-| Taylor-contrastive | 10.56 pp (SD 4.82) | 7.05 pp (SD 2.94) | 0.821 |
+| Magnitude | 7.27 pp (SD 2.34) | 6.78 pp (SD 2.58) | 0.634 |
+| Taylor-contrastive | 9.95 pp (SD 4.21) | 6.86 pp (SD 2.71) | 0.787 |
 
 **Interpretation.** Both selectors outperform matched random masks in retaining
 and removing SL. Taylor-contrastive is the stronger small-support candidate;
 Magnitude remains the relatively neutral baseline. This is good evidence for a
-selective LoRA ticket, not evidence that the mechanism is entirely LoRA-local.
+selective LoRA ticket, now across six runs, not evidence that the mechanism is
+entirely LoRA-local.
 
 The selected 30% support is not spatially uniform across the LoRA adapter. This
 figure is included as a descriptive diagnostic, not as proof that a layer/module
@@ -298,24 +314,67 @@ types, whereas Taylor-contrastive allocates support differently and varies more
 across layers. This helps explain why equal **global** density need not mean
 equal intervention in every projection module.
 
-![Where Magnitude and Taylor-contrastive select LoRA features](figures/ticket_distribution_by_layer_and_module_d30.png)
+The distributions are shown separately by trait below. This keeps all three
+independent seeds visible without treating a cat–owl difference as noise, and
+avoids an unbalanced three-cat/one-owl presentation.
+
+![Where Magnitude and Taylor-contrastive select cat LoRA features](figures/ticket_distribution_cat_d30.png)
+
+![Where Magnitude and Taylor-contrastive select owl LoRA features](figures/ticket_distribution_owl_d30.png)
 
 ### Preservation controls
 
-- Held-out numeric validity relative to full adapter: approximately −0.27 pp
-  for Magnitude support and −1.81 pp for Taylor-contrastive support.
-- Generic-text perplexity changed by about +0.1% or less.
+- In the original four-run panel, held-out numeric validity relative to the full
+  adapter was approximately −0.27 pp for Magnitude support and −1.81 pp for
+  Taylor-contrastive support.
+- Generic-text perplexity changed by about +0.3% or less.
 - HellaSwag/ARC-Challenge/GSM8K showed no large consistent loss.
 - A blinded LLM judge labelled 24,000 coherence responses: 82.4% `valid`, with
   16.3% `empty_or_truncated`; no consistent selected-versus-random difference.
 
+The completed owl-48/49 frozen-mask results are consistent with those checks.
+For selected supports, numeric validity ranged from 97.46% to 98.83% (full
+adapter: 98.44% to 99.02%), and generic perplexity was within +0.32% of the
+matching full adapter. Relative to each full owl adapter, HellaSwag and
+ARC-Challenge changed by at most 0.8 pp and 0.4 pp respectively across the
+selected branches; GSM8K varied more, but without a consistent direction of
+change.
+
+| Run | Selected support | Numeric validity | Δ generic PPL | HellaSwag | ARC-C | GSM8K |
+|---|---|---:|---:|---:|---:|---:|
+| owl-48 | full adapter | 99.02% | — | 80.0% | 91.2% | 29.6% |
+| owl-48 | Magnitude | 98.63% | +0.23% | 79.6% | 91.2% | 30.0% |
+| owl-48 | Taylor-contrastive | 97.85% | +0.26% | 79.6% | 91.6% | 31.2% |
+| owl-49 | full adapter | 98.44% | — | 79.2% | 90.8% | 26.4% |
+| owl-49 | Magnitude | 98.83% | +0.28% | 78.8% | 91.2% | 26.4% |
+| owl-49 | Taylor-contrastive | 97.46% | +0.32% | 79.2% | 91.2% | 28.8% |
+
+The owl extension also judged 12,000 responses blinded to condition: 480 per
+selected branch (two seeds × trait/control × 120 prompts), and 2,400 per
+corresponding random branch (five random masks). `Valid` is the judge's rubric
+label, not a human-quality guarantee. The selected branches are within about
+two percentage points of their random controls; consequently there is no sign
+that the selective trait effects are explained by an obvious coherence collapse.
+
+| Mask | Branch | Selected valid | Random valid | Selected empty/truncated | Random empty/truncated |
+|---|---|---:|---:|---:|---:|
+| Magnitude | support | 83.75% | 81.71% | 15.00% | 17.04% |
+| Magnitude | ablation | 81.46% | 82.88% | 16.88% | 15.79% |
+| Taylor-contrastive | support | 81.04% | 81.58% | 17.92% | 17.12% |
+| Taylor-contrastive | ablation | 83.96% | 82.92% | 14.17% | 15.88% |
+
 **Interpretation.** The mask result is not explained by obvious general model
 collapse. Still, numeric validity is only on-task retention and the sizeable
-empty/truncated rate means a blinded manual coherence audit is still needed.
+empty/truncated rate means the blinded, pre-specified manual coherence audit is
+still needed.
 
 ## Structural recurrence and score analyses
 
-At 30% support, within a run:
+### Exploratory four-method screen
+
+The first screen scored all four methods only for cat-47/48/49 and owl-47. It
+was used to choose candidates, not to make a balanced cross-trait claim. At 30%
+support, within a run:
 
 - Magnitude–Wanda Jaccard is about 0.66 (3.7–3.8× random expectation);
 - Taylor–Taylor-contrastive is about 0.52 (2.9–3.0× random);
@@ -340,7 +399,7 @@ Taylor-contrastive selects a materially different ranking. Recurrence is
 descriptive: it may reflect generic LoRA geometry or module scale, not the SL
 mechanism itself.
 
-### Completed owl overlap extension
+### Final balanced six-run analysis
 
 After adding owl-48 and owl-49, we repeated the pre-specified descriptive
 comparison for the two carried-forward methods only: Magnitude and
@@ -348,6 +407,16 @@ Taylor-contrastive. At 30% support, Magnitude recurs strongly across every
 cat–cat, owl–owl, and cat–owl pair (Jaccard 0.657–0.780, 3.7–4.4× the
 equal-density random expectation). Taylor-contrastive is less recurrent but
 still consistently above chance (0.292–0.329, 1.7–1.9× random).
+
+The final within-run heatmap is correspondingly restricted to the two frozen
+selectors, but includes every completed cat and owl adapter. Its off-diagonal
+cell asks whether Magnitude and Taylor-contrastive choose the same 30% support
+within one adapter; it is descriptive overlap, not causal evidence.
+
+![Completed-seed within-run selected-mask overlap at 30% support](figures/selected_within_run_method_overlap_d30.png)
+
+The complementary cross-run heatmap fixes the selector and compares supports
+between all six runs.
 
 ![Completed-seed selected-mask overlap at 30% support](figures/owl_completion_selected_cross_run_overlap_d30.png)
 
@@ -358,36 +427,12 @@ random-normalized value is the informative comparison.
 
 ![Completed-seed recurrence over random by density](figures/owl_completion_selected_overlap_over_random_by_density.png)
 
-### Visual evidence for recurrence
-
-The within-run heatmap asks whether two methods choose the same support in the
-*same trained adapter*. The off-diagonal cells make the two method families
-visible: Magnitude and Wanda agree most, while Taylor and Taylor-contrastive
-also agree substantially. Parentheses are observed Jaccard divided by the
-equal-density random expectation, not a causal effect size.
-
-![Within-run overlap heatmaps](figures/within_run_method_overlap_d30.png)
-
-The cross-run heatmaps ask a different question: hold the selection method
-fixed, then compare supports across independently trained cat students and the
-owl student. Recurrence above chance is real, especially for Wanda/Magnitude,
-but is not proof of a shared SL circuit. It can reflect generic adapter
-structure; comparisons involving cat-47 and owl-47 have the shared-seed caveat.
-
-![Cross-run same-method overlap heatmaps](figures/cross_run_same_method_overlap_d30.png)
-
-The density heatmap aggregates these comparisons at 10%, 30%, and 50% support.
-It answers whether recurrence is restricted to an arbitrary 30% threshold.
-Every entry is `Jaccard / random expectation`: values above one mean more
-overlap than equal-density random supports. The trend is strongest at sparse
-supports and weakens as support density rises.
-
-![Cross-run recurrence relative to random by density](figures/cross_run_overlap_over_random_by_density.png)
-
 Finally, score correlation uses all rankings before any support threshold is
-applied. It confirms that Taylor-contrastive is not merely Magnitude/Wanda
-renamed: it weakly correlates with them, even though it moderately correlates
-with ordinary Taylor.
+applied. It is available for the original four-run screen, where all four
+methods were scored; owl-48/49 were deliberately evaluated only for the two
+pre-chosen selectors. The screen confirms that Taylor-contrastive is not merely
+Magnitude/Wanda renamed: it weakly correlates with them, even though it
+moderately correlates with ordinary Taylor.
 
 ![Feature-score correlations](figures/feature_score_spearman_correlation.png)
 
@@ -442,23 +487,16 @@ each of these directions with `d_student` using cosine similarity.
 later trait-related teacher/student direction, but it is not one universal
 layer across traits.
 
-The figure below is the key diagnostic. In the **left panel**, each point is
-the cosine with `d_student`: blue is `d_trait`, red is `d_system`, and grey is
-the original mixed `d_legacy`. Solid lines are the mean over the three cat
-runs (with shaded standard deviation); dashed/other broken lines are owl-47.
-The vertical dotted lines mark layers 21 and 28, later used as the owl and cat
-causal-intervention candidates. The key result is not simply that layer 28 is
-high: it is that its blue cat signal is about 0.62 while its red control is
-about 0.10.
+The figures below are deliberately split by trait. The cat panel reports the
+mean and SD across three cat seeds, with the direction norm as a safeguard
+against interpreting a cosine from a nearly zero vector. The owl panel instead
+shows every owl seed separately for the clean trait, system-only, and legacy
+contrasts. This is more informative than folding three owl trajectories into a
+cat mean, because their later clean-direction peaks are not identical.
 
-The **right panel** does not measure similarity. It shows the L2 size of each
-teacher-side direction for cats. It is a diagnostic against interpreting a
-cosine from an almost-zero vector as meaningful: a substantial norm means the
-prompt contrast actually produced an appreciable activation displacement. The
-norm alone does not establish alignment or causality; the cosine in the left
-panel and the interventions below provide those tests.
+![Cat activation directions with system-prompt controls](figures/activation_direction_controls_cat_by_layer.png)
 
-![Activation directions with system-prompt controls](figures/activation_direction_controls_by_layer.png)
+![Owl activation directions with system-prompt controls](figures/activation_direction_controls_owl_by_layer.png)
 
 ### Causal direction pilot
 
@@ -484,19 +522,34 @@ For cats, teacher-direction projection-out changed the SL effect by **−15.2,
 zero/modest positive; −0.5 steering gave −8.8/−9.8/−6.2 pp and +0.5 steering
 gave +7.8/+5.6/+6.0 pp. Numeric validity remained 96.9–100%.
 
-For owl, effects were inconsistent: projection-out −0.6 pp, negative steering
-+1.4 pp, positive steering −2.6 pp.
+For owl, the pre-registered layer-21 intervention does not replicate the cat
+pattern. All three seeds show the **opposite steering sign**: negative steering
+increases `WS − WC` and positive steering decreases it. Projection-out is mixed:
+
+| Run | Full `WS − WC` | Teacher project-out Δ | −0.5 steering Δ | +0.5 steering Δ |
+|---|---:|---:|---:|---:|
+| owl-47 | 6.60 pp | −0.60 pp | +1.40 pp | −2.60 pp |
+| owl-48 | 7.40 pp | +1.60 pp | +1.40 pp | −4.20 pp |
+| owl-49 | 14.80 pp | −4.60 pp | +1.00 pp | −7.80 pp |
+
+Here Δ is the difference-in-differences relative to each run's full-adapter
+effect. Numeric validity stayed 96.9–100% across the trait and control sides.
 
 **Interpretation.** The controlled teacher direction is causally coupled to
 cat SL in all three cat runs. It does not identify the base weights behind that
 behaviour; activation directions can be useful causal handles without being a
-unique mechanistic locus. Owl requires more replication/calibration.
+unique mechanistic locus. The completed owl extension shows a consistent
+pre-registered steering response, but its orientation is not a stable
+teacher-to-student trait direction: the steering signs are opposite to cats and
+project-out is mixed. It should not be used as an owl base-localization selector
+without further calibration.
 
 The difference-in-differences plot makes the required control explicit. A value
 below zero for projection-out means the intervention reduced the `WS − WC`
 effect, rather than merely changing both models equally. The three cats show
 large negative teacher-direction projection-out and the expected sign flip for
-negative versus positive steering. Owl has no corresponding coherent pattern.
+negative versus positive steering. Owl shows a reproducible but opposite
+steering sign and mixed project-out, which is not the same mechanistic pattern.
 
 ![Causal activation interventions as difference-in-differences](figures/activation_causal_difference_in_differences.png)
 
@@ -506,15 +559,16 @@ All figures are descriptive summaries; no new model was trained to make them.
 
 | Image | Question | Reading / result |
 |---|---|---|
-| `figures/within_run_method_overlap_d30.png` | Do methods select the same 30% support in one adapter? | Jaccard cells; parentheses are × random expectation. Magnitude–Wanda and Taylor–TC are the strongest pairs. |
-| `figures/cross_run_same_method_overlap_d30.png` | Does one method recur across runs? | Jaccard by run pair. Magnitude/Wanda recur strongly; Taylor/TC less, but above chance. |
-| `figures/cross_run_overlap_over_random_by_density.png` | How does recurrence depend on density? | Mean Jaccard/random across cat–cat and cat–owl pairs; values >1 are above chance. |
-| `figures/cross_run_overlap_by_density_lines.png` | Is the density trend pair-specific? | Individual-pair curves; solid lines cat–cat and dashed cat–owl. |
+| `figures/within_run_method_overlap_d30.png` | What happened in the initial four-method screen? | Historical, unbalanced cat-47/48/49 plus owl-47 screen; used for method selection, not final cross-trait comparison. |
+| `figures/cross_run_same_method_overlap_d30.png` | What happened in the initial across-run four-method screen? | Historical, unbalanced screen; superseded for final claims by the six-run selected-mask figures below. |
 | `figures/owl_completion_selected_cross_run_overlap_d30.png` | Do the two selected masks recur after completing owl seeds? | Magnitude is high across all six runs; Taylor-contrastive is lower but consistently above random. |
+| `figures/selected_within_run_method_overlap_d30.png` | Do the two frozen selectors agree within every completed adapter? | Six balanced panels; cells are Jaccard and × random expectation. |
 | `figures/owl_completion_selected_overlap_over_random_by_density.png` | Does the completed owl extension preserve the density trend? | Yes: 10% is most above random for cat–cat, owl–owl, and cat–owl comparisons. |
-| `figures/ticket_distribution_by_layer_and_module_d30.png` | Where are selected LoRA features? | Top: rate by layer and run. Bottom: mean by module. Dotted line is the global 30% target. Nonuniform selection is descriptive, not causal localization. |
-| `figures/activation_causal_difference_in_differences.png` | Does direction intervention selectively alter SL? | Negative project-out = selective suppression of `WS−WC`; positive steering = amplification. Cat is coherent; owl is not. |
-| `figures/activation_direction_controls_by_layer.png` | Was activation alignment trait-specific? | Shows clean trait, system-only, and legacy cosines by layer. The old layer-11 peak is prompt structure; later clean signal remains. |
+| `figures/ticket_distribution_cat_d30.png` | Where are selected cat LoRA features? | All three cat seeds, separated from owl. Nonuniform selection is descriptive, not causal localization. |
+| `figures/ticket_distribution_owl_d30.png` | Where are selected owl LoRA features? | All three owl seeds, using the identical visualization and global 30% target. |
+| `figures/activation_causal_difference_in_differences.png` | Does direction intervention selectively alter SL? | Cat has the expected suppression/amplification pattern; all three owl runs have the opposite steering sign and mixed project-out. |
+| `figures/activation_direction_controls_cat_by_layer.png` | Is cat alignment trait-specific? | Cat mean ± SD for clean trait, system-only, and legacy contrasts, plus direction norms. |
+| `figures/activation_direction_controls_owl_by_layer.png` | Is owl alignment trait-specific? | All three owl seeds separately for the same three contrasts; clean later signals exist but peak layer differs by seed. |
 | `figures/feature_score_spearman_correlation.png` | Do score methods rank features similarly before thresholding? | Magnitude/Wanda correlate around 0.68; Taylor/TC around 0.55; TC is weakly correlated with Magnitude/Wanda. |
 | `figures/causal_mask_aggregate.png` | What happened in the exploratory screen across all four methods and densities? | Selected-support and selected-ablation effects against random controls. It informed candidate selection; it is not the final frozen result. |
 
@@ -539,9 +593,10 @@ All figures are descriptive summaries; no new model was trained to make them.
    or sufficient for SL.
 3. The activation direction does not prove teacher and student use the same
    base circuit.
-4. Owl now has three behavioural seeds, but its two new frozen-mask,
-   coherence, and causal-direction evaluations are still pending; the original
-   owl-47 causal-direction test was inconclusive.
+4. Owl now has three behavioural seeds and completed frozen-mask, causal-
+   direction, and blinded-coherence extensions. Its direction has the opposite
+   steering sign to cats and mixed project-out, so it is not yet a stable
+   localization handle.
 5. Coherence needs blinded manual audit because empty/truncated output is
    nontrivial even if it is not selected-mask-specific.
 

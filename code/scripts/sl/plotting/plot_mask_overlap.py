@@ -30,6 +30,8 @@ RUNS = (
     ("cat-48", "cat", "artifacts/sl/qwen25_7b_cat_replication_seed48"),
     ("cat-49", "cat", "artifacts/sl/qwen25_7b_cat_replication_seed49"),
     ("owl-47", "owl", "artifacts/sl/qwen25_7b_owl_replication"),
+    ("owl-48", "owl", "artifacts/sl/qwen25_7b_owl_replication_seed48"),
+    ("owl-49", "owl", "artifacts/sl/qwen25_7b_owl_replication_seed49"),
 )
 METHODS = (
     ("magnitude_feature", "Magnitude"),
@@ -38,14 +40,7 @@ METHODS = (
     ("taylor_contrastive_feature", "Taylor-contrastive"),
 )
 
-OWL_COMPLETION_RUNS = (
-    ("cat-47", "cat", "artifacts/sl/qwen25_7b_cat_replication"),
-    ("cat-48", "cat", "artifacts/sl/qwen25_7b_cat_replication_seed48"),
-    ("cat-49", "cat", "artifacts/sl/qwen25_7b_cat_replication_seed49"),
-    ("owl-47", "owl", "artifacts/sl/qwen25_7b_owl_replication"),
-    ("owl-48", "owl", "artifacts/sl/qwen25_7b_owl_replication_seed48"),
-    ("owl-49", "owl", "artifacts/sl/qwen25_7b_owl_replication_seed49"),
-)
+OWL_COMPLETION_RUNS = RUNS
 SELECTED_METHODS = (
     ("magnitude_feature", "Magnitude"),
     ("taylor_contrastive_feature", "Taylor-contrastive"),
@@ -127,6 +122,32 @@ def plot_owl_completion_only(args) -> None:
             scores = load_scores(score_path)
             for density in densities:
                 supports[(run, method, density)] = selected_units(scores, density)
+
+    # Final within-run comparison: all six completed adapters, restricted to
+    # the two pre-selected methods.  This avoids presenting a 3-cat/1-owl
+    # exploratory screen as if it were the final balanced analysis.
+    figure, axes = plt.subplots(2, 3, figsize=(13, 8), constrained_layout=True)
+    image = None
+    selected_labels = [label for _method, label in SELECTED_METHODS]
+    for axis, run in zip(axes.flat, run_labels, strict=True):
+        matrix = np.eye(len(SELECTED_METHODS))
+        ratios = np.ones_like(matrix)
+        for i, (left, _left_label) in enumerate(SELECTED_METHODS):
+            for j, (right, _right_label) in enumerate(SELECTED_METHODS):
+                if i == j:
+                    continue
+                stats = overlap(supports[(run, left, args.density)], supports[(run, right, args.density)], args.density)
+                matrix[i, j], ratios[i, j] = stats["jaccard"], stats["jaccard_over_random"]
+        image = heatmap(axis, matrix, ratios, selected_labels, run)
+    assert image is not None
+    figure.colorbar(image, ax=axes.ravel().tolist(), shrink=.84, label="Jaccard overlap")
+    figure.suptitle(
+        f"Within-run overlap of the two frozen selectors ({args.condition} adapter, {args.density:.0%} support)\n"
+        "cell: Jaccard; parentheses: × expected equal-density random overlap"
+    )
+    figure.savefig(output / f"selected_within_run_method_overlap_d{int(args.density * 100):02d}.png", dpi=220)
+    figure.savefig(output / f"selected_within_run_method_overlap_d{int(args.density * 100):02d}.pdf")
+    plt.close(figure)
 
     figure, axes = plt.subplots(1, len(SELECTED_METHODS), figsize=(11, 5), constrained_layout=True)
     if len(SELECTED_METHODS) == 1:

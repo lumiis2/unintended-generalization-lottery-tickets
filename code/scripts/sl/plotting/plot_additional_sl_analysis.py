@@ -27,7 +27,11 @@ RUNS = (
     ("cat-48", "cat", "artifacts/sl/qwen25_7b_cat_replication_seed48"),
     ("cat-49", "cat", "artifacts/sl/qwen25_7b_cat_replication_seed49"),
     ("owl-47", "owl", "artifacts/sl/qwen25_7b_owl_replication"),
+    ("owl-48", "owl", "artifacts/sl/qwen25_7b_owl_replication_seed48"),
+    ("owl-49", "owl", "artifacts/sl/qwen25_7b_owl_replication_seed49"),
 )
+CAT_RUNS = tuple(run for run in RUNS if run[1] == "cat")
+OWL_RUNS = tuple(run for run in RUNS if run[1] == "owl")
 METHODS = (
     ("magnitude_feature", "Magnitude", "#1f77b4"),
     ("taylor_contrastive_feature", "Taylor-contrastive", "#2ca02c"),
@@ -60,11 +64,11 @@ def layer_and_module(name: str) -> tuple[int, str]:
     return int(match.group(1)), name.rsplit(".", 1)[-1].replace("_proj", "")
 
 
-def plot_ticket_distribution(root: Path, out: Path, density: float) -> None:
+def plot_ticket_distribution(root: Path, out: Path, density: float, runs: tuple[tuple[str, str, str], ...], stem: str, title: str) -> None:
     """Show where selected adapter features sit, not whether they are causal."""
     layer_rates: dict[str, dict[str, dict[int, list[float]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     module_rates: dict[str, dict[str, dict[str, list[float]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-    for run, _trait, relative in RUNS:
+    for run, _trait, relative in runs:
         for method, label, _color in METHODS:
             scores = load_scores(root / relative / "mask_scores" / "trait" / f"{method}.pt")
             selected = unit_mask_from_scores(scores, 1.0 - density)
@@ -90,7 +94,7 @@ def plot_ticket_distribution(root: Path, out: Path, density: float) -> None:
     for column, (_method, label, color) in enumerate(METHODS):
         top, bottom = axes[0, column], axes[1, column]
         all_layers = sorted({layer for values in layer_rates[label].values() for layer in values})
-        for run, _trait, _relative in RUNS:
+        for run, _trait, _relative in runs:
             values = [float(np.mean(layer_rates[label][run].get(layer, [np.nan]))) for layer in all_layers]
             top.plot(all_layers, np.multiply(values, 100), marker="o", markersize=3.2, linewidth=1.5, label=run)
         top.axhline(density * 100, color="0.35", linestyle=":", linewidth=1.5, label="global target density")
@@ -100,8 +104,8 @@ def plot_ticket_distribution(root: Path, out: Path, density: float) -> None:
         top.set_xticks(np.arange(min(all_layers), max(all_layers) + 1, 4))
         top.grid(axis="y", alpha=0.25)
         modules = sorted({module for values in module_rates[label].values() for module in values})
-        means = [np.mean([np.mean(module_rates[label][run].get(module, [np.nan])) for run, _, _ in RUNS]) * 100 for module in modules]
-        stds = [np.std([np.mean(module_rates[label][run].get(module, [np.nan])) for run, _, _ in RUNS], ddof=0) * 100 for module in modules]
+        means = [np.mean([np.mean(module_rates[label][run].get(module, [np.nan])) for run, _, _ in runs]) * 100 for module in modules]
+        stds = [np.std([np.mean(module_rates[label][run].get(module, [np.nan])) for run, _, _ in runs], ddof=0) * 100 for module in modules]
         bottom.bar(range(len(modules)), means, yerr=stds, capsize=3, color=color, alpha=0.8)
         bottom.axhline(density * 100, color="0.35", linestyle=":", linewidth=1.5)
         bottom.set_title(f"{label}: average across layers and runs", pad=8)
@@ -122,22 +126,22 @@ def plot_ticket_distribution(root: Path, out: Path, density: float) -> None:
         labels,
         loc="upper center",
         bbox_to_anchor=(0.5, 0.935),
-        ncol=5,
+        ncol=min(len(labels), 7),
         frameon=False,
         fontsize=9,
         columnspacing=1.7,
         handlelength=2.2,
     )
     figure.suptitle(
-        f"Where {density:.0%} LoRA feature supports are selected (descriptive)",
+        title,
         y=0.985,
         fontsize=15,
     )
     # Reserve a fixed header strip for the title and shared legend; tight
     # layout otherwise places the top-panel titles underneath that legend.
     figure.tight_layout(rect=(0.02, 0.02, 0.98, 0.86), h_pad=3.2, w_pad=2.3)
-    figure.savefig(out / "ticket_distribution_by_layer_and_module_d30.png", dpi=220)
-    figure.savefig(out / "ticket_distribution_by_layer_and_module_d30.pdf")
+    figure.savefig(out / f"{stem}.png", dpi=220)
+    figure.savefig(out / f"{stem}.pdf")
     plt.close(figure)
 
 
@@ -172,7 +176,10 @@ def plot_activation_did(root: Path, out: Path) -> None:
     if not rows:
         raise FileNotFoundError("No activation-causality summaries found")
     figure, axes = plt.subplots(1, 2, figsize=(13, 5.2), sharey=True)
-    colors = {"cat-47": "#1f77b4", "cat-48": "#ff7f0e", "cat-49": "#2ca02c", "owl-47": "#9467bd"}
+    colors = {
+        "cat-47": "#1f77b4", "cat-48": "#ff7f0e", "cat-49": "#2ca02c",
+        "owl-47": "#9467bd", "owl-48": "#8c564b", "owl-49": "#e377c2",
+    }
     x = np.arange(len(specs))
     for axis, trait in zip(axes, ("cat", "owl"), strict=True):
         relevant = [row for row in rows if row["trait"] == trait]
@@ -193,8 +200,8 @@ def plot_activation_did(root: Path, out: Path) -> None:
     (out / "activation_causal_difference_in_differences.json").write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
 
 
-def plot_activation_controls(root: Path, out: Path) -> None:
-    """Contrast clean trait alignment against the two system-prompt controls."""
+def load_activation_controls(root: Path) -> dict[str, dict]:
+    """Load prompt-control summaries for every completed run."""
     names = (
         ("trait_system_minus_neutral_system", "Trait − neutral system", "#1f77b4", "-"),
         ("neutral_system_minus_no_system", "Neutral system − no system", "#d62728", "-"),
@@ -204,38 +211,70 @@ def plot_activation_controls(root: Path, out: Path) -> None:
     for run, trait, relative in RUNS:
         path = root / relative / "activation_analysis_system_prompt_control" / "summary.json"
         loaded[run] = {"trait": trait, "comparisons": read_json(path)["comparisons"]}
+    return {"names": names, "loaded": loaded}
+
+
+def plot_activation_controls_cat(root: Path, out: Path) -> None:
+    """Retain the compact cat summary: alignment plus direction magnitude."""
+    data = load_activation_controls(root)
+    names, loaded = data["names"], data["loaded"]
+    cat_runs = [run for run, _trait, _relative in CAT_RUNS]
     figure, axes = plt.subplots(1, 2, figsize=(13, 4.8), sharex=True)
-    cat_runs = [run for run, trait, _ in RUNS if trait == "cat"]
     for key, label, color, linestyle in names:
         vectors = [np.array([row["mean_direction_cosine"] for row in loaded[run]["comparisons"][key]["layers"]]) for run in cat_runs]
         layers = np.arange(len(vectors[0]))
         mean, std = np.mean(vectors, axis=0), np.std(vectors, axis=0)
-        axes[0].plot(layers, mean, color=color, linestyle=linestyle, label=f"cats mean: {label}")
-        axes[0].fill_between(layers, mean - std, mean + std, color=color, alpha=0.13)
-        owl = np.array([row["mean_direction_cosine"] for row in loaded["owl-47"]["comparisons"][key]["layers"]])
-        axes[0].plot(layers, owl, color=color, linestyle="--" if linestyle == "-" else "-.", alpha=0.9, label=f"owl: {label}")
-    axes[0].axvline(21, color="0.5", linestyle=":", linewidth=1)
+        axes[0].plot(layers, mean, color=color, linestyle=linestyle, label=label)
+        axes[0].fill_between(layers, mean - std, mean + std, color=color, alpha=.13)
     axes[0].axvline(28, color="0.5", linestyle=":", linewidth=1)
-    axes[0].set_title("Teacher vs. student direction alignment")
+    axes[0].set_title("Teacher vs. student direction alignment (cat mean ± SD)")
     axes[0].set_xlabel("Hidden-state layer")
     axes[0].set_ylabel("Cosine similarity")
-    axes[0].grid(axis="y", alpha=0.25)
-    axes[0].legend(fontsize=7, frameon=False, ncol=2)
+    axes[0].grid(axis="y", alpha=.25)
+    axes[0].legend(fontsize=8, frameon=False)
     for key, label, color, linestyle in names:
         vectors = [np.array([row["teacher_direction_norm"] for row in loaded[run]["comparisons"][key]["layers"]]) for run in cat_runs]
         layers = np.arange(len(vectors[0]))
         mean, std = np.mean(vectors, axis=0), np.std(vectors, axis=0)
         axes[1].plot(layers, mean, color=color, linestyle=linestyle, label=label)
-        axes[1].fill_between(layers, mean - std, mean + std, color=color, alpha=0.13)
+        axes[1].fill_between(layers, mean - std, mean + std, color=color, alpha=.13)
     axes[1].set_title("Teacher-side direction norm (cat mean ± SD)")
     axes[1].set_xlabel("Hidden-state layer")
     axes[1].set_ylabel("L2 norm")
-    axes[1].grid(axis="y", alpha=0.25)
+    axes[1].grid(axis="y", alpha=.25)
     axes[1].legend(fontsize=8, frameon=False)
-    figure.suptitle("Prompt-control analysis: the legacy layer-11 peak is largely a system-prompt effect")
-    figure.tight_layout(rect=(0, 0, 1, 0.94))
-    figure.savefig(out / "activation_direction_controls_by_layer.png", dpi=220)
-    figure.savefig(out / "activation_direction_controls_by_layer.pdf")
+    figure.suptitle("Cat prompt-control analysis: layer-11 is largely a system-prompt effect")
+    figure.tight_layout(rect=(0, 0, 1, .93))
+    figure.savefig(out / "activation_direction_controls_cat_by_layer.png", dpi=220)
+    figure.savefig(out / "activation_direction_controls_cat_by_layer.pdf")
+    plt.close(figure)
+
+
+def plot_activation_controls_owl(root: Path, out: Path) -> None:
+    """Show all owl seeds without mixing their pattern into the cat mean."""
+    data = load_activation_controls(root)
+    names, loaded = data["names"], data["loaded"]
+    owl_runs = [run for run, _trait, _relative in OWL_RUNS]
+    owl_colors = {"owl-47": "#9467bd", "owl-48": "#8c564b", "owl-49": "#e377c2"}
+    figure, axes = plt.subplots(1, 3, figsize=(16.2, 4.8), sharex=True, sharey=True)
+    for axis, (key, label, color, linestyle) in zip(axes, names, strict=True):
+        for run in owl_runs:
+            owl = np.array([row["mean_direction_cosine"] for row in loaded[run]["comparisons"][key]["layers"]])
+            axis.plot(np.arange(len(owl)), owl, color=owl_colors[run], linewidth=1.8, label=run)
+        axis.axvline(21, color="0.5", linestyle=":", linewidth=1)
+        axis.set_title(label)
+        axis.set_xlabel("Hidden-state layer")
+        axis.grid(axis="y", alpha=0.25)
+    axes[0].set_ylabel("Cosine similarity with student direction")
+    handles, labels = axes[0].get_legend_handles_labels()
+    figure.legend(
+        handles, labels, loc="upper center", bbox_to_anchor=(.5, .93),
+        ncol=4, frameon=False, fontsize=8,
+    )
+    figure.suptitle("Owl prompt-control direction alignment across all completed owl seeds", y=.99)
+    figure.tight_layout(rect=(0, 0, 1, .84))
+    figure.savefig(out / "activation_direction_controls_owl_by_layer.png", dpi=220)
+    figure.savefig(out / "activation_direction_controls_owl_by_layer.pdf")
     plt.close(figure)
 
 
@@ -256,8 +295,14 @@ def plot_score_correlations(root: Path, out: Path, sample_size: int) -> None:
     """Approximate feature-score Spearman correlations, separate from support overlap."""
     labels = [label for _key, label in ALL_METHODS]
     keys = [key for key, _label in ALL_METHODS]
+    eligible_runs = [
+        spec for spec in RUNS
+        if all((root / spec[2] / "mask_scores" / "trait" / f"{method}.pt").is_file() for method in keys)
+    ]
+    if not eligible_runs:
+        raise FileNotFoundError("No run has all four score tensors needed for score correlations")
     matrices = {}
-    for run, _trait, relative in RUNS:
+    for run, _trait, relative in eligible_runs:
         vectors = {}
         for method in keys:
             scores = load_scores(root / relative / "mask_scores" / "trait" / f"{method}.pt")
@@ -271,9 +316,11 @@ def plot_score_correlations(root: Path, out: Path, sample_size: int) -> None:
         matrices[run] = matrix.tolist()
         del vectors
         gc.collect()
-    figure, axes = plt.subplots(2, 2, figsize=(11.5, 9.5), constrained_layout=True)
+    columns = min(3, len(eligible_runs))
+    rows = int(np.ceil(len(eligible_runs) / columns))
+    figure, axes = plt.subplots(rows, columns, figsize=(5.0 * columns, 4.5 * rows), constrained_layout=True, squeeze=False)
     image = None
-    for axis, (run, _trait, _relative) in zip(axes.flat, RUNS, strict=True):
+    for axis, (run, _trait, _relative) in zip(axes.flat, eligible_runs):
         matrix = np.asarray(matrices[run])
         image = axis.imshow(matrix, vmin=-1, vmax=1, cmap="coolwarm")
         axis.set_xticks(range(len(labels)), labels, rotation=35, ha="right")
@@ -282,13 +329,20 @@ def plot_score_correlations(root: Path, out: Path, sample_size: int) -> None:
         for row in range(len(labels)):
             for col in range(len(labels)):
                 axis.text(col, row, f"{matrix[row, col]:.2f}", ha="center", va="center", fontsize=8, color="white" if abs(matrix[row, col]) > .55 else "black")
+    for axis in axes.flat[len(eligible_runs):]:
+        axis.set_visible(False)
     assert image is not None
     figure.colorbar(image, ax=axes.ravel().tolist(), shrink=.8, label="Approximate Spearman correlation")
-    figure.suptitle(f"Feature-score correlation (uniform sample of up to {sample_size:,} features per run)")
+    figure.suptitle(
+        f"Feature-score correlation (uniform sample of up to {sample_size:,} features per eligible run)"
+    )
     figure.savefig(out / "feature_score_spearman_correlation.png", dpi=220)
     figure.savefig(out / "feature_score_spearman_correlation.pdf")
     plt.close(figure)
-    (out / "feature_score_spearman_correlation.json").write_text(json.dumps({"sample_size": sample_size, "matrices": matrices}, indent=2) + "\n", encoding="utf-8")
+    (out / "feature_score_spearman_correlation.json").write_text(
+        json.dumps({"sample_size": sample_size, "runs": [spec[0] for spec in eligible_runs], "matrices": matrices}, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def main() -> None:
@@ -300,11 +354,21 @@ def main() -> None:
     args = parser.parse_args()
     root, out = args.repo_root, args.repo_root / args.output_dir
     out.mkdir(parents=True, exist_ok=True)
-    plot_ticket_distribution(root, out, args.density)
+    plot_ticket_distribution(
+        root, out, args.density, CAT_RUNS,
+        "ticket_distribution_cat_d30",
+        f"Where {args.density:.0%} LoRA feature supports are selected (cat only; descriptive)",
+    )
+    plot_ticket_distribution(
+        root, out, args.density, OWL_RUNS,
+        "ticket_distribution_owl_d30",
+        f"Where {args.density:.0%} LoRA feature supports are selected (owl only; descriptive)",
+    )
     plot_activation_did(root, out)
-    plot_activation_controls(root, out)
+    plot_activation_controls_cat(root, out)
+    plot_activation_controls_owl(root, out)
     plot_score_correlations(root, out, args.score_sample_size)
-    print(f"Wrote four additional SL visualisations to {out}")
+    print(f"Wrote completed-run SL visualisations to {out}")
 
 
 if __name__ == "__main__":
