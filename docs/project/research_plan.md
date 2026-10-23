@@ -45,7 +45,7 @@ capability-preservation controls.
 
 **Completed.** We reproduced prompt-conditioned SL in Qwen2.5-7B-Instruct
 with a 10k-example number dataset, BF16 rank-8 LoRA, and matched neutral
-controls. The completed suite has three cat seeds and one owl seed:
+controls. The completed suite has three cat and three owl seeds:
 
 | Run | `W0` | `WT` | `WS` | `WC` | SL effect |
 |---|---:|---:|---:|---:|---:|
@@ -53,10 +53,14 @@ controls. The completed suite has three cat seeds and one owl seed:
 | cat-48 | 2.14 | 79.59 | 29.42 | 2.31 | +27.11 pp |
 | cat-49 | 2.39 | 79.84 | 17.37 | 2.29 | +15.08 pp |
 | owl-47 | 0.66 | 98.97 | 6.04 | 0.57 | +5.47 pp |
+| owl-48 | 0.66 | 98.52 | 7.44 | 0.70 | +6.74 pp |
+| owl-49 | 0.64 | 99.02 | 11.93 | 0.60 | +11.33 pp |
 
-**Next.** Run owl-48 and owl-49 with the frozen existing configuration. These
-are the main remaining replication gap. Do not alter mask method, density,
-prompt family, or causal-intervention settings based on their outcomes.
+**In progress.** Complete the broad four-method exploratory screen for owl-48
+and owl-49, exactly matching the historical cat screen. This adds Wanda and
+Taylor-trait scores, their causal density screen, and full four-method overlap
+figures; it is descriptive and will not change the already frozen final
+Magnitude/Taylor-contrastive comparison.
 
 ### 2. Find selective LoRA supports — completed for the current suite
 
@@ -110,13 +114,29 @@ activation-level causal handle, not a localization of the responsible weights.
 pre-registered owl-47 layer/scale/control intervention. Do not select a new
 layer after observing the new owl runs.
 
-### 4. Localize candidate base components — planned
+### 4. Localize candidate base components — first cross-seed pilot in progress
 
 **Question.** Does a base-model component causally affect both prompted `WT`
 and unprompted `WS`?
 
-Do **not** prune all base weights. Instead, use the controlled direction and
-activation patching/attribution to nominate structured base components:
+Do **not** prune all base weights or rank `W_base + DeltaW` globally: base
+weight magnitudes dominate a small LoRA update, making such a selector mostly a
+base-magnitude mask. Instead, the first pilot freezes a structured,
+activation-level base-component candidate set before evaluation:
+
+1. On `cat-47` only, at the pre-specified controlled-direction layer 28,
+   score each output residual channel of the attention and MLP submodules by
+   `abs(mean(teacher trait - neutral system) * mean(WS - WC))`.
+2. Freeze the top 128 channels per component and an equal-size random
+   complement control.
+3. On independently trained `cat-48` and `cat-49`, gate those base-component
+   channels only at the final prompt token; evaluate `WS`, `WC`, and numeric
+   preservation. The primary statistic remains the change in `WS - WC` versus
+   the matched random gate.
+
+This tests **base-component dependence**, not yet a base-weight lottery ticket.
+It is a safe candidate-generation step before weight-level ablation. Subsequent
+candidate families may include:
 
 - attention heads;
 - MLP layers or output channels;
