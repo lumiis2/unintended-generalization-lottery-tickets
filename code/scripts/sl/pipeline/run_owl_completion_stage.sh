@@ -4,14 +4,22 @@
 # that were written atomically by a prior attempt or requeue.
 set -Eeuo pipefail
 
-stage="${1:?Usage: $0 {replication|scores|masks|activations|causality} TASK_INDEX}"
-task_index="${2:?Usage: $0 {replication|scores|masks|activations|causality} TASK_INDEX}"
+if (( $# != 2 )); then
+    echo "Usage: $0 STAGE TASK_INDEX" >&2
+    exit 2
+fi
+stage="$1"
+task_index="$2"
 
 CONFIGS=(
     code/configs/sl/reproduction/qwen25_7b_owl_replication_seed48.yaml
     code/configs/sl/reproduction/qwen25_7b_owl_replication_seed49.yaml
 )
-config="${CONFIGS[$task_index]:?Invalid TASK_INDEX: $task_index}"
+if ! [[ "$task_index" =~ ^[0-9]+$ ]] || (( task_index >= ${#CONFIGS[@]} )); then
+    echo "Invalid TASK_INDEX: $task_index" >&2
+    exit 2
+fi
+config="${CONFIGS[$task_index]}"
 
 case "$stage" in
     replication)
