@@ -43,13 +43,11 @@ data/processed/
 *.onnx
 
 # Research material not intended for redistribution
-references/papers/
-legacy/
+docs/references/papers/
+docs/project/research_context.md
 
 # Internal project and infrastructure context
-PROJECT_CONTEXT.md
-LAB_INFRASTRUCTURE.md
-RUNPOD.md
+docs/operations/
 AGENTS.md
 **/AGENTS.md
 .agents/

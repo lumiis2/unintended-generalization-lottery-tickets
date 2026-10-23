@@ -1,0 +1,122 @@
+{
+  "version": "final-evaluation-v1",
+  "status": "frozen_unrun",
+  "trait_prompts": {
+    "path": "trait_prompts.jsonl",
+    "count": 50,
+    "sha256": "ad7525b278077bb3341c562e2e7de8d8bf57d45658e97c2d978f7e1578db0821"
+  },
+  "coherence_prompts": {
+    "path": "coherence_prompts.jsonl",
+    "count": 120,
+    "sha256": "79c44f40d0b69786c68120a1f9194d48f324bfda3256593b27de651af3feec64"
+  },
+  "numeric_slice": {
+    "evaluation_data_seed": 20261010,
+    "offset": 384,
+    "count": 512
+  },
+  "generic_loss": {
+    "dataset": "Salesforce/wikitext",
+    "config": "wikitext-103-raw-v1",
+    "split": "validation",
+    "selection_seed": 20261010,
+    "examples": 512,
+    "rule": "shuffle, then take non-empty documents",
+    "frozen_asset": "generic_loss.jsonl",
+    "frozen": {
+      "dataset": "Salesforce/wikitext",
+      "config": "wikitext-103-raw-v1",
+      "split": "validation (non-empty filter)",
+      "dataset_fingerprint": "f46ec2c9ad0044de",
+      "source_row_count": 2461,
+      "path": "generic_loss.jsonl",
+      "count": 512,
+      "sha256": "24dbfd4d04b7f888a6a9a02e9b309cb9be85e529dbf87e71e8814b4b972d1234"
+    }
+  },
+  "benchmarks": {
+    "framework": "lm-eval",
+    "tasks": [
+      "hellaswag",
+      "arc_challenge",
+      "gsm8k"
+    ],
+    "fewshot": 0,
+    "limit_per_task": 250,
+    "seed": 20261010,
+    "frozen_assets": {
+      "hellaswag": "benchmarks/hellaswag.jsonl",
+      "arc_challenge": "benchmarks/arc_challenge.jsonl",
+      "gsm8k": "benchmarks/gsm8k.jsonl"
+    },
+    "frozen": {
+      "hellaswag": {
+        "dataset": "Rowan/hellaswag",
+        "config": "default",
+        "split": "validation",
+        "dataset_fingerprint": "71a62ba9d49be089",
+        "source_row_count": 10042,
+        "path": "benchmarks/hellaswag.jsonl",
+        "count": 250,
+        "sha256": "42faef291020848d6af1bf1a148cfa42bdf16bb514961a31cb8a17fb530dac46"
+      },
+      "arc_challenge": {
+        "dataset": "allenai/ai2_arc",
+        "config": "ARC-Challenge",
+        "split": "test",
+        "dataset_fingerprint": "a4361c3f3e560fcd",
+        "source_row_count": 1172,
+        "path": "benchmarks/arc_challenge.jsonl",
+        "count": 250,
+        "sha256": "9d4c89a62bdb3cafe59bd9ce854535398e574632d1290597b2e77b65cbc24d61"
+      },
+      "gsm8k": {
+        "dataset": "openai/gsm8k",
+        "config": "main",
+        "split": "test",
+        "dataset_fingerprint": "59ec1b7f9357c7a2",
+        "source_row_count": 1319,
+        "path": "benchmarks/gsm8k.jsonl",
+        "count": 250,
+        "sha256": "29ea220093c08cbc765a9f048791034a104a17658db5eddfb4475ece94e29b6e"
+      }
+    }
+  },
+  "coherence_judge": {
+    "protocol": "external_blinded_rubric_v1",
+    "labels": [
+      "valid",
+      "empty_or_truncated",
+      "repetitive_or_garbled",
+      "off_topic",
+      "unwarranted_refusal"
+    ],
+    "manual_audit_fraction": 0.1,
+    "model_identifier": "Qwen/Qwen2.5-14B-Instruct",
+    "model_revision": "cf98f3b3bbb457ad9e2bb7baf9a0125b6b88caa8",
+    "decoding": {
+      "temperature": 0.0,
+      "do_sample": false,
+      "max_new_tokens": 32
+    },
+    "blinding": "randomize response order; omit condition and mask metadata from judge input"
+  },
+  "primary_masks": [
+    {
+      "method": "magnitude_feature",
+      "support_density": 0.3
+    },
+    {
+      "method": "taylor_contrastive_feature",
+      "support_density": 0.3
+    }
+  ],
+  "random_controls_per_branch": 5,
+  "data_freeze": {
+    "script": "code/scripts/sl/evaluation/freeze_final_evaluation_data.py",
+    "datasets_version": "4.8.5",
+    "selection_seed": 20261010,
+    "policy": "The JSONL assets and SHA-256 values, not a mutable remote dataset revision, are authoritative for final evaluation."
+  }
+}

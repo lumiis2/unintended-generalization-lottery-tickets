@@ -22,10 +22,10 @@ dependencies = [
 dev = ["pytest>=8,<9", "ruff>=0.9,<1"]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["code/src"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["code/tests"]
 
 [tool.ruff]
 line-length = 100
