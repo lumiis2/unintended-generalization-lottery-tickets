@@ -41,7 +41,9 @@ echo "date=$(date --iso-8601=seconds) commit=$(git rev-parse HEAD) job=$SLURM_JO
 python - <<'PY'
 import torch
 assert torch.cuda.is_available()
-assert torch.cuda.get_device_properties(0).total_memory >= 45 * 2**30
+# L40S is marketed as 48 GB decimal, i.e. about 44.7 GiB reported by PyTorch.
+# Keep the guard above 24 GB-class GPUs without rejecting a valid L40S.
+assert torch.cuda.get_device_properties(0).total_memory >= 44 * 2**30
 print(torch.__version__, torch.cuda.get_device_name(0))
 PY
 
