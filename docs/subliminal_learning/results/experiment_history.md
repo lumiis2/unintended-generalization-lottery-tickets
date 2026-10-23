@@ -1,6 +1,8 @@
 # Subliminal Learning: Experiment History and Current Evidence
 
-**Status:** factual record through 22 October 2026.
+**Status:** factual record through 23 October 2026. The owl-48/49 reproduction,
+mask-score, activation-scan, and overlap stages are complete; their final frozen
+mask, coherence, and causal-direction evaluations are not yet reported here.
 
 ## What is Subliminal Learning, and why study weights?
 
@@ -58,11 +60,7 @@ Successful reproduction configuration:
 - LoRA rank 8, alpha 8, no dropout, on `q/k/v/o/gate/up/down`;
 - 3 epochs, LR `2e-4`, batch size 22, gradient accumulation 3, max length 500
   (effective batch size 66);
-- cats in three independent runs, owls in one run.
-
-**Replication TODO.** Train two additional owl seeds under the same frozen
-configuration. This would put owl on equal footing with cats for robustness,
-cross-trait mask overlap, and causal activation analyses.
+- cats and owls in three independent runs each (seeds 47, 48, and 49).
 
 An earlier smaller/different pilot did not show reliable SL. We treated it as a
 power/configuration pilot, not evidence against SL.
@@ -113,6 +111,18 @@ improve consistency; it is not a contradiction or a universal format result.
 | cat-48 | 2.14% | 79.59% | 29.42% | 2.31% | +27.11 pp |
 | cat-49 | 2.39% | 79.84% | 17.37% | 2.29% | +15.08 pp |
 | owl-47 | 0.66% | 98.97% | 6.04% | 0.57% | +5.47 pp |
+| owl-48 | 0.66% | 98.52% | 7.44% | 0.70% | +6.74 pp |
+| owl-49 | 0.64% | 99.02% | 11.93% | 0.60% | +11.33 pp |
+
+The owl extension used the identical frozen configuration. Its full-adapter
+rates, split by prompt form, were:
+
+| Run | Prompt form | `W0` | `WT` | `WS` | `WC` | SL effect |
+|---|---|---:|---:|---:|---:|---:|
+| owl-48 | plain | 1.06% | 98.80% | 10.92% | 1.10% | +9.82 pp |
+| owl-48 | number prefix | 0.26% | 98.24% | 3.96% | 0.30% | +3.66 pp |
+| owl-49 | plain | 1.10% | 98.84% | 14.46% | 1.10% | +13.36 pp |
+| owl-49 | number prefix | 0.18% | 99.20% | 9.40% | 0.10% | +9.30 pp |
 
 On a third, held-out trait-prompt family, the full-adapter effects were:
 
@@ -123,9 +133,11 @@ On a third, held-out trait-prompt family, the full-adapter effects were:
 | cat-49 | +13.27 pp |
 | owl-47 | +8.40 pp |
 
-**Interpretation.** Cats reproduce robustly across three independent runs; owl
-shows cross-trait feasibility but has only one seed. `cat-47` and `owl-47`
-share a seed label, so their pairwise comparisons are not fully independent.
+**Interpretation.** The effect now reproduces across three cat and three owl
+runs. It is consistently larger for plain prompts in owl-48 and owl-49, but
+the number-prefix effect remains positive in every owl run. `cat-47` and
+`owl-47` share a seed label, so that particular cross-trait comparison is not
+fully independent.
 
 ## LoRA mask experiments
 
@@ -328,6 +340,24 @@ Taylor-contrastive selects a materially different ranking. Recurrence is
 descriptive: it may reflect generic LoRA geometry or module scale, not the SL
 mechanism itself.
 
+### Completed owl overlap extension
+
+After adding owl-48 and owl-49, we repeated the pre-specified descriptive
+comparison for the two carried-forward methods only: Magnitude and
+Taylor-contrastive. At 30% support, Magnitude recurs strongly across every
+cat–cat, owl–owl, and cat–owl pair (Jaccard 0.657–0.780, 3.7–4.4× the
+equal-density random expectation). Taylor-contrastive is less recurrent but
+still consistently above chance (0.292–0.329, 1.7–1.9× random).
+
+![Completed-seed selected-mask overlap at 30% support](figures/owl_completion_selected_cross_run_overlap_d30.png)
+
+The density trend is the same in all three comparison groups: recurrence is
+largest at 10% support and declines as the support becomes denser. This is
+expected in part because dense supports overlap more by construction; the
+random-normalized value is the informative comparison.
+
+![Completed-seed recurrence over random by density](figures/owl_completion_selected_overlap_over_random_by_density.png)
+
 ### Visual evidence for recurrence
 
 The within-run heatmap asks whether two methods choose the same support in the
@@ -402,6 +432,11 @@ each of these directions with `d_student` using cosine similarity.
   system-only values were only 0.097, 0.093, and 0.104. Cats also had a
   signal around layer 21; owl peaked at layer 21 (0.628) and was 0.541 at
   layer 28.
+- The completed owl extension preserves a substantial clean signal but not a
+  universal peak layer: owl-48 peaks at layer 19 (0.589; system control 0.210)
+  and owl-49 at layer 19 (0.559; system control 0.230). The causal owl jobs
+  remain pre-registered at layer 21 from owl-47 rather than selecting these
+  new peaks after observing them.
 
 **Interpretation.** The original single layer-11 claim is invalid. There is a
 later trait-related teacher/student direction, but it is not one universal
@@ -475,6 +510,8 @@ All figures are descriptive summaries; no new model was trained to make them.
 | `figures/cross_run_same_method_overlap_d30.png` | Does one method recur across runs? | Jaccard by run pair. Magnitude/Wanda recur strongly; Taylor/TC less, but above chance. |
 | `figures/cross_run_overlap_over_random_by_density.png` | How does recurrence depend on density? | Mean Jaccard/random across cat–cat and cat–owl pairs; values >1 are above chance. |
 | `figures/cross_run_overlap_by_density_lines.png` | Is the density trend pair-specific? | Individual-pair curves; solid lines cat–cat and dashed cat–owl. |
+| `figures/owl_completion_selected_cross_run_overlap_d30.png` | Do the two selected masks recur after completing owl seeds? | Magnitude is high across all six runs; Taylor-contrastive is lower but consistently above random. |
+| `figures/owl_completion_selected_overlap_over_random_by_density.png` | Does the completed owl extension preserve the density trend? | Yes: 10% is most above random for cat–cat, owl–owl, and cat–owl comparisons. |
 | `figures/ticket_distribution_by_layer_and_module_d30.png` | Where are selected LoRA features? | Top: rate by layer and run. Bottom: mean by module. Dotted line is the global 30% target. Nonuniform selection is descriptive, not causal localization. |
 | `figures/activation_causal_difference_in_differences.png` | Does direction intervention selectively alter SL? | Negative project-out = selective suppression of `WS−WC`; positive steering = amplification. Cat is coherent; owl is not. |
 | `figures/activation_direction_controls_by_layer.png` | Was activation alignment trait-specific? | Shows clean trait, system-only, and legacy cosines by layer. The old layer-11 peak is prompt structure; later clean signal remains. |
@@ -486,7 +523,7 @@ All figures are descriptive summaries; no new model was trained to make them.
 ### Supported
 
 1. Qwen2.5-7B exhibits cat/owl SL through semantically unrelated number data;
-   the cat result is robust across three runs.
+   both traits now reproduce across three runs.
 2. Magnitude and Taylor-contrastive supports are selectively causal in LoRA;
    Taylor-contrastive is strongest, while Magnitude is the neutral baseline.
 3. No large selected-mask-specific degradation was found in current retention
@@ -502,7 +539,9 @@ All figures are descriptive summaries; no new model was trained to make them.
    or sufficient for SL.
 3. The activation direction does not prove teacher and student use the same
    base circuit.
-4. Owl has one seed and an inconclusive causal-direction test.
+4. Owl now has three behavioural seeds, but its two new frozen-mask,
+   coherence, and causal-direction evaluations are still pending; the original
+   owl-47 causal-direction test was inconclusive.
 5. Coherence needs blinded manual audit because empty/truncated output is
    nontrivial even if it is not selected-mask-specific.
 
@@ -515,7 +554,7 @@ All figures are descriptive summaries; no new model was trained to make them.
 | Final mask evaluations | `.../final_mask_evaluation/` |
 | Prompt-control activations | `.../activation_analysis_system_prompt_control/summary.json` |
 | Causal activations | `.../activation_causality_v1/{trait,control}/` |
-| Overlap figures | `artifacts/sl/mask_analysis/overlap/` |
+| Overlap figures | `artifacts/sl/mask_analysis/overlap/` (completed owl extension: `.../overlap/owl_completion/`) |
 | Additional figures | `artifacts/sl/additional_analysis/` |
 
 The next mechanistic question is whether teacher-derived **base-model
