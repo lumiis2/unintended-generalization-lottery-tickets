@@ -253,7 +253,10 @@ def main() -> None:
     write_json(output / "overlap_rows.json", {"condition": args.condition, "primary_density": args.density, "rows": rows})
 
     # Figure 1: methods × methods within each adapter at final 30% density.
-    figure, axes = plt.subplots(2, 2, figsize=(12, 10), constrained_layout=True)
+    # Six completed runs: one panel per run.  This used to be a 2×2 layout
+    # from the early 3-cat/1-owl screen and caused the post-processing job to
+    # fail once owl-48/49 were added.
+    figure, axes = plt.subplots(2, 3, figsize=(15, 9), constrained_layout=True)
     image = None
     for axis, (run, _trait, _root) in zip(axes.flat, RUNS, strict=True):
         matrix = np.eye(len(method_keys))
