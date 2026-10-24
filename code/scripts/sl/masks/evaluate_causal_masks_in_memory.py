@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import gc
 import hashlib
+import json
 import math
 import random
 import re
@@ -42,7 +43,7 @@ class MaskSpec:
     method: str
     density: float
     branch: str
-    score_path: Path
+    score_path: Path | None
     random_seed: int
     evaluation_prefix: str
     random_replicate: int = 0
@@ -70,6 +71,11 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def rows_digest(rows: list[dict]) -> str:
+    payload = "\n".join(json.dumps(row, sort_keys=True) for row in rows).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
 def wilson_interval(successes: int, n: int, z: float = 1.96) -> list[float]:
     if not n:
         return [0.0, 0.0]
@@ -90,11 +96,12 @@ def pending(root: Path, condition: str, spec: MaskSpec) -> bool:
 
 
 def preference_summary(
-    model, tokenizer, config: dict, condition: str, samples_per_prompt: int, prompt_set: str
+    model, tokenizer, config: dict, condition: str, samples_per_prompt: int, prompt_set: str,
+    frozen_prompt_rows: list[dict] | None = None,
 ) -> dict:
     seed = int(config["experiment"]["seed"])
     torch.manual_seed(seed)
-    rows = evaluation_prompts(
+    rows = frozen_prompt_rows or evaluation_prompts(
         config,
         int(config["evaluation"].get("number_prefix_seed", seed + 10_000)),
         prompt_set=prompt_set,
@@ -110,7 +117,7 @@ def preference_summary(
     pattern = re.compile(rf"\b{re.escape(target)}s?\b", flags=re.IGNORECASE)
     grouped: dict[str, list[bool]] = defaultdict(list)
     for row, completion in zip(expanded, completions, strict=True):
-        grouped[row["variant"]].append(bool(pattern.search(completion)))
+        grouped[row.get("variant", "frozen")].append(bool(pattern.search(completion)))
     successes = sum(sum(values) for values in grouped.values())
     total = sum(len(values) for values in grouped.values())
     return {
@@ -167,6 +174,11 @@ def numeric_summary(model, tokenizer, config: dict, condition: str, rows: list[d
 
 
 def make_parameter_mask(state: dict[str, torch.Tensor], spec: MaskSpec) -> tuple[dict[str, torch.Tensor], dict]:
+    if spec.score_path is None:
+        return (
+            {key: torch.ones_like(value, dtype=torch.bool) for key, value in state.items() if ".lora_" in key},
+            {"method": "full_adapter", "granularity": None},
+        )
     payload = torch.load(spec.score_path, map_location="cpu", weights_only=False)
     if payload["metadata"]["granularity"] != "feature":
         raise ValueError(f"Expected feature-level score, got {payload['metadata']['granularity']}")
@@ -190,6 +202,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--condition", choices=["trait", "control"], required=True)
+    parser.add_argument("--score-condition", choices=["trait", "control"], help="Adapter whose score artifact defines the mask; defaults to --condition.")
     parser.add_argument("--samples-per-prompt", type=int, default=20)
     parser.add_argument("--held-out-examples", type=int, default=128)
     parser.add_argument("--evaluation-data-seed", type=int, default=20261005)
@@ -197,6 +210,9 @@ def main() -> None:
     parser.add_argument("--score-root", default="mask_scores", help="Artifact directory relative to each run root")
     parser.add_argument("--evaluation-prefix", default="causal")
     parser.add_argument("--animal-prompt-set", choices=["primary", "held_out"], default="primary")
+    parser.add_argument("--trait-prompts-file", type=Path, help="Frozen JSONL trait prompts; overrides --animal-prompt-set.")
+    parser.add_argument("--frozen-manifest", type=Path, help="Manifest whose prompt hash is verified before evaluation.")
+    parser.add_argument("--full-adapter-only", action="store_true", help="Evaluate the unmasked adapter only.")
     parser.add_argument("--numeric-offset", type=int, default=0, help="Disjoint offset after seeded numeric shuffle")
     parser.add_argument("--random-replicates", type=int, default=1)
     parser.add_argument("--support-densities", type=float, nargs="+", default=[0.10, 0.30, 0.50])
@@ -206,31 +222,44 @@ def main() -> None:
 
     config = load_config(args.config)
     root = Path(config["experiment"]["output_root"])
+    score_condition = args.score_condition or args.condition
+    frozen_prompt_rows = read_jsonl(args.trait_prompts_file) if args.trait_prompts_file else None
+    if args.frozen_manifest:
+        if frozen_prompt_rows is None:
+            raise ValueError("--frozen-manifest requires --trait-prompts-file")
+        manifest = json.loads(args.frozen_manifest.read_text(encoding="utf-8"))
+        if manifest.get("status") != "frozen_unrun":
+            raise ValueError(f"Expected frozen_unrun manifest, got {manifest.get('status')}")
+        if rows_digest(frozen_prompt_rows) != manifest["trait_prompts"]["sha256"]:
+            raise ValueError("Frozen trait prompt hash failed verification")
     if args.random_replicates < 1:
         raise ValueError("--random-replicates must be at least one")
     specs = []
-    for method in args.methods:
-        for density in args.support_densities:
-            for branch in args.branches:
-                repeats = args.random_replicates if "random" in branch else 1
-                for replicate in range(repeats):
-                    specs.append(
-                        MaskSpec(
-                            method=method,
-                            density=density,
-                            branch=branch,
-                            score_path=root / args.score_root / args.condition / f"{method}.pt",
-                            random_seed=args.mask_seed_base + int(round(100 * density)) + 10_000 * replicate,
-                            evaluation_prefix=args.evaluation_prefix,
-                            random_replicate=replicate,
+    if args.full_adapter_only:
+        specs = [MaskSpec("full_adapter", 1.0, "full", None, args.mask_seed_base, args.evaluation_prefix)]
+    else:
+        for method in args.methods:
+            for density in args.support_densities:
+                for branch in args.branches:
+                    repeats = args.random_replicates if "random" in branch else 1
+                    for replicate in range(repeats):
+                        specs.append(
+                            MaskSpec(
+                                method=method,
+                                density=density,
+                                branch=branch,
+                                score_path=root / args.score_root / score_condition / f"{method}.pt",
+                                random_seed=args.mask_seed_base + int(round(100 * density)) + 10_000 * replicate,
+                                evaluation_prefix=args.evaluation_prefix,
+                                random_replicate=replicate,
+                            )
                         )
-                    )
     specs = [spec for spec in specs if pending(root, args.condition, spec)]
     if not specs:
         print(f"No pending masks for {args.config} / {args.condition}")
         return
     for spec in specs:
-        if not spec.score_path.is_file():
+        if spec.score_path is not None and not spec.score_path.is_file():
             raise FileNotFoundError(spec.score_path)
 
     adapter = root / "models" / args.condition / "adapter"
@@ -254,7 +283,8 @@ def main() -> None:
             mask, score_metadata = make_parameter_mask(state, spec)
             apply_mask(params, state, mask)
             preference = preference_summary(
-                model, tokenizer, config, args.condition, args.samples_per_prompt, args.animal_prompt_set
+                model, tokenizer, config, args.condition, args.samples_per_prompt,
+                args.animal_prompt_set, frozen_prompt_rows,
             )
             numeric = numeric_summary(model, tokenizer, config, args.condition, held_out, args.evaluation_data_seed)
             common = {
@@ -264,6 +294,7 @@ def main() -> None:
                 "source_adapter": str(adapter),
                 "source_adapter_sha256": source_adapter_sha256,
                 "score_artifact": str(spec.score_path),
+                "score_condition": score_condition if spec.score_path is not None else None,
                 "score_metadata": score_metadata,
                 "support_density": spec.density,
                 "branch": spec.branch,

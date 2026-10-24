@@ -1,0 +1,31 @@
+{
+  "version": "control-mask-transfer-v1",
+  "status": "frozen_unrun",
+  "purpose": "Pre-specified behavioural evaluation for WS-versus-WC score-mask transfer into the same WS adapter.",
+  "trait_prompts": {
+    "path": "trait_prompts.jsonl",
+    "count": 40,
+    "sha256": "acc1c71e9c387ae2add188500bc0a65c15eab06bfef955cc9c8128f6dfa6d9aa"
+  },
+  "numeric_slice": {
+    "evaluation_data_seed": 20261024,
+    "offset": 768,
+    "count": 128
+  },
+  "planned_selector": "taylor_trait_feature",
+  "planned_support_densities": [
+    0.1,
+    0.3,
+    0.5
+  ],
+  "planned_branches": [
+    "selected_support",
+    "selected_ablation"
+  ],
+  "planned_score_sources": [
+    "trait",
+    "control",
+    "random"
+  ],
+  "random_replicates": 2
+}
