@@ -35,6 +35,13 @@ def summary(root: Path, identifier: str) -> dict:
     return load(path)
 
 
+def numeric_summary(root: Path, identifier: str) -> dict:
+    path = root / "evaluations" / "numeric_task" / identifier / "summary.json"
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    return load(path)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", type=Path, default=Path("."))
@@ -61,7 +68,7 @@ def main() -> None:
                             "target_rate": item["target_rate"],
                             "sl_gap_pp": 100 * (item["target_rate"] - full_wc),
                             "full_sl_gap_pp": 100 * (full_ws - full_wc),
-                            "numeric_valid_rate": item["valid_numeric_completion_rate"],
+                            "numeric_valid_rate": numeric_summary(root, identifier)["valid_numeric_completion_rate"],
                         })
     (output / "rows.json").write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
 

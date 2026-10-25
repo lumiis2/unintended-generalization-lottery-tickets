@@ -173,8 +173,8 @@ def main() -> None:
     # control uses matched seeds.  The three curves distinguish recurring
     # structure from condition-specific selection at every pruning level.
     figure, axes = plt.subplots(2, 3, figsize=(15, 8), sharex=True, sharey=True)
-    axes_flat = axes.flat
-    for axis, (method, label, _color) in zip(axes_flat, ALL_METHODS, strict=True):
+    axes_flat = list(axes.flat)
+    for axis, (method, label, _color) in zip(axes_flat[: len(ALL_METHODS)], ALL_METHODS, strict=True):
         for comparison, condition_left, condition_right, color, marker in (
             ("trait–trait", "trait", "trait", "#1f77b4", "o"),
             ("control–control", "control", "control", "#ff7f0e", "o"),
@@ -211,7 +211,7 @@ def main() -> None:
         axis.set_xticks(args.pruning)
         axis.grid(axis="y", alpha=.25)
     # Hide the unused sixth panel, keeping the five scoring methods legible.
-    axes[1, 2].axis("off")
+    axes_flat[-1].axis("off")
     axes[1, 0].set_xlabel("LoRA features pruned (%)")
     axes[1, 1].set_xlabel("LoRA features pruned (%)")
     axes[0, 0].set_ylabel("Jaccard overlap of retained features")
