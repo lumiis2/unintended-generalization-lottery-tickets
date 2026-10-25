@@ -1,9 +1,12 @@
 # Subliminal Learning: Experiment History and Current Evidence
 
-**Status:** factual record through 23 October 2026. The owl-48/49 reproduction,
+**Status:** factual record through 24 October 2026. The owl-48/49 reproduction,
 mask-score, activation-scan, overlap, final frozen-mask, causal-direction, and
-blinded coherence stages are complete. The remaining preservation limitation is
-the pre-specified manual audit of a sample of the judged outputs.
+blinded coherence stages are complete. The balanced broad owl mask screen and
+the first cat base-component pilot are also complete; their post-processing
+figures remain to be regenerated after a plotting-only failure. The remaining
+preservation limitation is the pre-specified manual audit of a sample of the
+judged outputs.
 
 ## What is Subliminal Learning, and why study weights?
 
@@ -199,6 +202,42 @@ were not the final statistical test, precisely because looking at them informed
 that choice.
 
 ![Exploratory causal screen across methods and densities](figures/causal_mask_aggregate.png)
+
+#### Balanced owl-48/49 extension of the exploratory screen
+
+To make the exploratory screen methodologically balanced across traits, we ran
+the same four feature selectors and 10/30/50% selected-support and
+selected-ablation branches for owl-48 and owl-49. This uses the historical
+primary prompt family and one random mask per branch, so it is a descriptive
+extension, **not** a replacement for the frozen final evaluation below.
+
+The table aggregates the two new owl seeds. `Support advantage` is selected
+support minus random support; `selective ablation` is random ablation minus
+selected ablation, both in percentage points of `WS − WC`.
+
+| Density | Method | Mean support advantage | Mean selective ablation |
+|---:|---|---:|---:|
+| 10% | Magnitude | +0.50 | +4.65 |
+| 10% | Wanda | +0.50 | +4.35 |
+| 10% | Taylor-trait | +5.00 | +8.25 |
+| 10% | Taylor-contrastive | +5.25 | +8.35 |
+| 30% | Magnitude | +7.20 | +5.45 |
+| 30% | Wanda | +3.30 | +4.35 |
+| 30% | Taylor-trait | +8.45 | +5.45 |
+| 30% | Taylor-contrastive | +8.50 | +5.45 |
+| 50% | Magnitude | +6.40 | +1.60 |
+| 50% | Wanda | +3.55 | +1.60 |
+| 50% | Taylor-trait | +7.00 | +1.55 |
+| 50% | Taylor-contrastive | +7.15 | +1.75 |
+
+**Interpretation.** In these two new owl seeds, Taylor-trait and
+Taylor-contrastive retain substantially more SL than random supports at 10%
+and 30%, while all methods have selected ablations more damaging than random
+ablations. The weaker 50% ablation contrast is expected when a large fraction
+of the adapter is retained in both branches. This screen is consistent with,
+but was not used to re-select, the frozen Magnitude and Taylor-contrastive
+masks. Raw per-run results are under
+`artifacts/sl/qwen25_7b_owl_replication_seed{48,49}/evaluations/causal-*`.
 
 ### Final frozen mask evaluation: the final held-out test
 
@@ -436,6 +475,76 @@ moderately correlates with ordinary Taylor.
 
 ![Feature-score correlations](figures/feature_score_spearman_correlation.png)
 
+### Taylor-numeric structural control
+
+We additionally scored **Taylor-numeric** on all six completed runs.  This is
+first-order Taylor importance for held-out numeric next-token loss: it does not
+use animal-preference prompts, but it is not a fully task-neutral selector.
+The analysis compares its selected columns with Taylor-trait and
+Taylor-contrastive at several support densities.  It is a structural control,
+not yet a causal evaluation of a Taylor-numeric mask.
+
+At **30% retained support** (equivalently 70% pruned), averaged over runs in
+the trait adapter:
+
+| Compared selected supports | Jaccard relative to equal-density random expectation |
+|---|---:|
+| Taylor-numeric vs. Taylor-trait | 2.01x |
+| Taylor-numeric vs. Taylor-contrastive | 1.10x |
+| Taylor-trait vs. Taylor-contrastive | 2.97x |
+
+Thus, numeric-task importance and trait importance share non-random structure,
+whereas Taylor-contrastive is structurally more distinct. This is expected in
+part because Taylor-contrastive explicitly subtracts normalized numeric Taylor
+importance from trait Taylor importance. At the sparser 10% support, the same
+comparisons rise to 3.48x, 1.75x, and 10.74x, respectively; ratios rise at low
+support because the equal-density random intersection is very small.
+
+The corresponding 30% supports in the trait and matched control adapters are
+also distinguishable: Taylor-numeric has about 2.4x random trait--control
+overlap, Taylor-trait about 2.1--2.2x, and Taylor-contrastive about 1.4--1.5x.
+This is compatible with Taylor-contrastive removing more task-generic
+structure, but it does **not** establish that it is behaviorally better.
+
+![Taylor-objective overlaps across pruning levels](figures/taylor_objective_trait_control_overlap_by_pruning.png)
+
+![Taylor-objective overlap within trait adapters at 30% support](figures/taylor_objective_within_trait_heatmaps_p70.png)
+
+![Taylor-objective overlap within control adapters at 30% support](figures/taylor_objective_within_control_heatmaps_p70.png)
+
+The next inference-bearing test is a separately frozen causal evaluation of
+Taylor-numeric versus Taylor-trait, Taylor-contrastive, Magnitude, and random
+masks. It must not reuse the held-out split that informed the present method
+comparison.
+
+### Trait-mask versus control-mask transfer
+
+We also ran a frozen **control-mask transfer** experiment for Taylor-trait.
+For each active `WS` adapter, we compared (i) a support/ablation selected from
+that `WS`, (ii) an equal-density Taylor-trait support selected from the matched
+`WC` adapter, and (iii) two random supports. All masks were applied to the
+same active `WS`; therefore the comparison asks whether the selector tracks
+SL-specific adapter structure rather than generic numeric-task structure.
+The frozen evaluation uses a new 40-prompt trait family and a separate numeric
+slice. Results below are the mean SL gap (`WS_masked − intact WC`, percentage
+points) across all six runs.
+
+| Retained support | Full `WS` gap | WS-derived support | WC-derived support | Random support | WS-derived ablation | WC-derived ablation | Random ablation |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 10% | 6.75 | 1.46 | 0.04 | 0.00 | 0.04 | 4.75 | 5.44 |
+| 30% | 6.75 | **4.38** | 0.29 | 0.10 | **0.08** | 1.00 | 2.83 |
+| 50% | 6.75 | **5.92** | 2.08 | 0.92 | −0.12 | −0.04 | 1.00 |
+
+At 30% support, the `WS`-derived support retains about 65% of the full frozen
+SL gap (4.38/6.75 pp), while the matched `WC` support retains almost none
+(0.29 pp). Conversely, ablating the `WS`-derived support leaves essentially no
+gap (0.08 pp), more selective than ablating the matched `WC` support (1.00 pp)
+or random support (2.83 pp). At 50%, random ablation is itself substantially
+destructive, so that density is less discriminative. This is stronger evidence
+than overlap alone that Taylor-trait selection captures structure specific to
+the trait-trained adapter; it still does not establish that the mechanism is
+only in LoRA, because the frozen base remains intact.
+
 ## Activation-space analyses
 
 Let `h` be the final-prompt-token residual-stream hidden state at a layer.
@@ -553,6 +662,66 @@ steering sign and mixed project-out, which is not the same mechanistic pattern.
 
 ![Causal activation interventions as difference-in-differences](figures/activation_causal_difference_in_differences.png)
 
+## First base-component localization pilot: cats
+
+The LoRA-mask results retain the entire base model, so they cannot distinguish
+an adapter-local mechanism from a LoRA update that recruits the frozen base.
+We therefore ran a deliberately narrow cross-seed **base-component dependence**
+pilot. It does not prune base weights and is not yet a base-weight ticket test.
+
+### Frozen candidate selection
+
+Using `cat-47` only, we fixed layer 28 before evaluation because it was the
+clean cat activation-direction layer. For the attention output and MLP output
+of that decoder layer separately, we scored each residual channel `j` by:
+
+```text
+abs(mean(teacher trait-system − neutral-system)_j
+    × mean(WS − WC)_j)
+```
+
+We froze the top 128 channels of each component (3.6% of the 3,584 residual
+channels), plus an equal-size random channel set drawn from the complement.
+Candidate identities and provenance are stored in
+`artifacts/sl/qwen25_7b_cat_replication/base_component_localization_v1/selection.{pt,json}`.
+
+### Cross-seed causal evaluation
+
+On independently trained `cat-48` and `cat-49`, we zeroed only the selected
+component-output channels at the **final prompt token during prefill**. We did
+the same with the matched random channels, separately for `WS` and `WC`, then
+computed the usual `WS − WC` effect on the frozen third trait-prompt family.
+This is an activation gate on a frozen base component, rather than changing a
+stored base weight. Numeric validity was measured on 128 held-out sequences.
+
+| Run | Gate | `WS` | `WC` | SL effect | Δ versus matched random | Numeric WS / WC |
+|---|---|---:|---:|---:|---:|---:|
+| cat-48 | full | 25.8 | 0.8 | 25.0 | — | 99.22 / 99.22 |
+| cat-48 | attention candidate | 23.6 | 0.6 | 23.0 | −1.2 | 98.44 / 100.00 |
+| cat-48 | attention random | 25.0 | 0.8 | 24.2 | reference | 99.22 / 99.22 |
+| cat-48 | MLP candidate | 12.8 | 3.2 | 9.6 | **−15.8** | 99.22 / 100.00 |
+| cat-48 | MLP random | 26.2 | 0.8 | 25.4 | reference | 99.22 / 99.22 |
+| cat-49 | full | 13.8 | 0.8 | 13.0 | — | 100.00 / 97.66 |
+| cat-49 | attention candidate | 13.2 | 0.8 | 12.4 | −0.6 | 100.00 / 98.44 |
+| cat-49 | attention random | 13.8 | 0.8 | 13.0 | reference | 100.00 / 97.66 |
+| cat-49 | MLP candidate | 7.2 | 3.2 | 4.0 | **−7.8** | 100.00 / 97.66 |
+| cat-49 | MLP random | 12.4 | 0.6 | 11.8 | reference | 100.00 / 97.66 |
+
+**Interpretation.** The frozen MLP-channel gate reduced the cat SL effect far
+more than its matched random gate in both unseen seeds, with high numeric
+validity. The attention-channel candidate gate did not show a comparable
+selective reduction. This is promising evidence that a small, direction-linked
+MLP component in the frozen base is causally relevant to the *student* effect.
+
+The conclusion is intentionally limited. Candidate selection used `cat-47` and
+was evaluated only on two transfer seeds; the gate acts on activations, not
+base parameters; and prompted `WT` has not yet been tested under the same gate.
+Thus this does not yet establish that teacher and student use the same base
+circuit, nor that the base component is necessary independently of LoRA. The
+next confirmatory step is to test the frozen MLP candidate in prompted `WT`,
+combine it factorially with the selected LoRA masks, and retain matched random
+base controls.
+
 ## Appendix: visualization index
 
 All figures are descriptive summaries; no new model was trained to make them.
@@ -584,13 +753,17 @@ All figures are descriptive summaries; no new model was trained to make them.
    controls.
 4. In cats, a prompt-controlled teacher activation direction is causally
    coupled to the student behaviour.
+5. A first cross-seed cat pilot finds that gating 128 frozen-base MLP output
+   channels selected in cat-47 selectively reduces SL in cat-48/49 relative to
+   random gates, while preserving numeric completion.
 
 ### Not yet established
 
 1. The phenomenon is not shown to be only in LoRA; all mask results retain the
    entire base model.
-2. No base weight, head, MLP feature, or SAE feature is known to be necessary
-   or sufficient for SL.
+2. No **base weight**, head, MLP feature, or SAE feature is known to be
+   necessary or sufficient for SL. The current MLP result is an activation-gate
+   pilot, not a weight-level localization.
 3. The activation direction does not prove teacher and student use the same
    base circuit.
 4. Owl now has three behavioural seeds and completed frozen-mask, causal-
@@ -599,6 +772,49 @@ All figures are descriptive summaries; no new model was trained to make them.
    localization handle.
 5. Coherence needs blinded manual audit because empty/truncated output is
    nontrivial even if it is not selected-mask-specific.
+
+## Research notes: meeting of 24 October 2026
+
+These are forward-looking questions, not completed results.
+
+1. **Prompted versus fine-tuned teachers.** A direct comparison between the
+   current Qwen prompted-teacher setting and Mariana's Gemma fine-tuned-teacher
+   setting is descriptive only: model family and teacher-conditioning regime
+   both change. First create a shared protocol card (trait, teacher strength,
+   data filtering, student budget, controls, seeds, and frozen evaluation).
+   The clean experiment is within one model family: prompted versus fine-tuned
+   teacher under the same student protocol; ideally repeat in the second family.
+2. **Trait-blind Taylor control.** The scorer already implements
+   `--objective numeric`: Taylor importance for held-out numeric next-token
+   loss. It has not been evaluated as a standalone mask. This should be called
+   **Taylor-numeric**, rather than fully neutral or vanilla Taylor: it is blind
+   to the animal trait but explicitly informed by the numeric task. It is also
+   the numeric component already subtracted inside Taylor-contrastive. A fair
+   new-method test needs a new frozen evaluation split, rather than reusing the
+   final held-out results that informed the current analysis.
+3. **Cross-trait mask specificity.** The initial four-run screen found ordinary
+   Taylor overlap of about 0.39--0.42 at 30% support across cat and owl-47
+   (2.2--2.4× equal-density random expectation). Full Taylor-trait score
+   artifacts now exist for owl-48/49, but the six-run plots need regeneration.
+   More directly, test mask transfer: apply a `WS`-derived mask, a matched
+   `WC`-derived mask, and a random mask to the same `WS` adapter. This asks
+   whether a control mask preserves/ablates SL nearly as well as a trait mask.
+4. **Trait dependence of activation directions.** The current evidence already
+   rejects a single universal layer: cats have a clean causal handle at layer
+   28, while owl peaks differ by seed and has opposite steering signs. It does
+   not yet isolate trait semantics from an animal/preference-family direction.
+   Test several semantically diverse traits, matched semantic controls, and
+   cross-trait intervention (e.g. use a cat-derived direction in an owl run)
+   before calling any direction SL-specific.
+5. **Cross-project audit.** Collect Mariana's and Soham's code, result tables,
+   exact LoRA target modules, score objectives, mask granularity, retraining
+   protocol, and controls into the shared protocol card before comparing
+   conclusions.
+6. **Column-based pruning.** In our and the EM legacy convention, a feature/
+   column mask zeros a whole column of LoRA `A`. Given `DeltaW = B @ A`, this
+   zeros one input column of the effective update `DeltaW` across every LoRA
+   rank component. It is structured parameter pruning, not pruning an
+   activation token or neuron at inference time.
 
 ## Artifact map
 
@@ -611,6 +827,7 @@ All figures are descriptive summaries; no new model was trained to make them.
 | Causal activations | `.../activation_causality_v1/{trait,control}/` |
 | Overlap figures | `artifacts/sl/mask_analysis/overlap/` (completed owl extension: `.../overlap/owl_completion/`) |
 | Additional figures | `artifacts/sl/additional_analysis/` |
+| Base-component pilot | selector: `artifacts/sl/qwen25_7b_cat_replication/base_component_localization_v1/`; transfer evaluations: the corresponding `..._seed48/` and `..._seed49/` roots |
 
 The next mechanistic question is whether teacher-derived **base-model
 components** affect both prompted teacher behaviour and `WS`, and whether their

@@ -37,10 +37,11 @@ class Spec:
     branch: str
     random_replicate: int | None
     random_seed: int | None
+    prefix: str = "final"
 
     def identifier(self, condition: str) -> str:
         tail = f"-r{self.random_replicate:02d}" if self.random_replicate is not None else ""
-        return f"final-{condition}-{self.method}-d30-{self.branch}{tail}"
+        return f"{self.prefix}-{condition}-{self.method}-d30-{self.branch}{tail}"
 
 
 def sha256(path: Path) -> str:
@@ -58,9 +59,9 @@ def jsonl_row_digest(path: Path) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def check_asset(manifest: dict, key: str) -> None:
+def check_asset(final_root: Path, manifest: dict, key: str) -> None:
     item = manifest[key]
-    path = FINAL_ROOT / item["path"]
+    path = final_root / item["path"]
     if not path.is_file() or jsonl_row_digest(path) != item["sha256"]:
         raise ValueError(f"Frozen asset failed hash check: {path}")
 
@@ -69,24 +70,24 @@ def canonical_key(name: str) -> str:
     return name.replace(".lora_A.default.weight", ".lora_A.weight").replace(".lora_B.default.weight", ".lora_B.weight")
 
 
-def load_final_assets() -> tuple[dict, list[dict], list[dict], list[str]]:
-    manifest = json.loads((FINAL_ROOT / "manifest.json").read_text(encoding="utf-8"))
+def load_final_assets(final_root: Path = FINAL_ROOT) -> tuple[dict, list[dict], list[dict], list[str]]:
+    manifest = json.loads((final_root / "manifest.json").read_text(encoding="utf-8"))
     if manifest["status"] != "frozen_unrun":
         raise ValueError(f"Expected frozen_unrun manifest, got {manifest['status']}")
-    check_asset(manifest, "trait_prompts")
-    check_asset(manifest, "coherence_prompts")
+    check_asset(final_root, manifest, "trait_prompts")
+    check_asset(final_root, manifest, "coherence_prompts")
     generic = manifest["generic_loss"]["frozen"]
-    generic_path = FINAL_ROOT / generic["path"]
+    generic_path = final_root / generic["path"]
     if sha256(generic_path) != generic["sha256"]:
         raise ValueError("Frozen generic-loss asset failed hash check")
-    return manifest, read_jsonl(FINAL_ROOT / manifest["trait_prompts"]["path"]), read_jsonl(FINAL_ROOT / manifest["coherence_prompts"]["path"]), [row["text"] for row in read_jsonl(generic_path)]
+    return manifest, read_jsonl(final_root / manifest["trait_prompts"]["path"]), read_jsonl(final_root / manifest["coherence_prompts"]["path"]), [row["text"] for row in read_jsonl(generic_path)]
 
 
-def make_specs(random_controls: int, seed_base: int) -> list[Spec]:
+def make_specs(random_controls: int, seed_base: int, methods: tuple[str, ...] = METHODS, prefix: str = "final") -> list[Spec]:
     # The full adapter is the preservation reference; every mask is compared
     # against it as well as against matched random masks.
-    specs: list[Spec] = [Spec("full", "full", None, None)]
-    for method in METHODS:
+    specs: list[Spec] = [Spec("full", "full", None, None, prefix)]
+    for method in methods:
         for branch in BRANCHES:
             n = random_controls if branch.startswith("random") else 1
             for replicate in range(n):
@@ -96,6 +97,7 @@ def make_specs(random_controls: int, seed_base: int) -> list[Spec]:
                         branch,
                         replicate if branch.startswith("random") else None,
                         seed_base + 10_000 * replicate if branch.startswith("random") else None,
+                        prefix,
                     )
                 )
     return specs
@@ -183,11 +185,19 @@ def main() -> None:
     p.add_argument("--samples-per-trait-prompt", type=int, default=30)
     p.add_argument("--random-controls", type=int, default=5)
     p.add_argument("--mask-seed-base", type=int, default=20261010)
+    p.add_argument("--final-root", type=Path, default=FINAL_ROOT)
+    p.add_argument("--output-dir", default="final_mask_evaluation")
+    p.add_argument("--evaluation-prefix", default="final")
+    p.add_argument(
+        "--methods", nargs="+",
+        choices=("magnitude_feature", "taylor_trait_feature", "taylor_contrastive_feature", "taylor_numeric_feature"),
+        default=list(METHODS),
+    )
     args = p.parse_args()
-    manifest, trait_rows, coherence_rows, generic_texts = load_final_assets()
+    manifest, trait_rows, coherence_rows, generic_texts = load_final_assets(args.final_root)
     config = load_config(args.config)
     root = Path(config["experiment"]["output_root"])
-    output = root / "final_mask_evaluation"
+    output = root / args.output_dir
     numeric_rows = held_out_numeric(config, args.condition, manifest["numeric_slice"]["count"], manifest["numeric_slice"]["evaluation_data_seed"], manifest["numeric_slice"]["offset"])
     adapter = root / "models" / args.condition / "adapter"
     state = load_file(str(adapter / "adapter_model.safetensors"), device="cpu")
@@ -195,7 +205,7 @@ def main() -> None:
     model = load_model(config, adapter=str(adapter)).eval()
     params = {canonical_key(name): parameter for name, parameter in model.named_parameters() if ".lora_A.default.weight" in name or ".lora_B.default.weight" in name}
     try:
-        for spec in make_specs(args.random_controls, args.mask_seed_base):
+        for spec in make_specs(args.random_controls, args.mask_seed_base, tuple(args.methods), args.evaluation_prefix):
             identifier = spec.identifier(args.condition)
             summary_path = output / identifier / "summary.json"
             response_path = output / identifier / "coherence_responses.jsonl"
@@ -212,7 +222,7 @@ def main() -> None:
             responses = coherence(model, tokenizer, config, coherence_rows)
             write_jsonl(response_path, responses)
             write_json(summary_path, {
-                "manifest_version": manifest["version"], "manifest_sha256": sha256(FINAL_ROOT / "manifest.json"),
+                "manifest_version": manifest["version"], "manifest_sha256": sha256(args.final_root / "manifest.json"),
                 "config": args.config, "condition": args.condition, "identifier": identifier,
                 "method": spec.method, "support_density": 1.0 if spec.method == "full" else 0.30, "branch": spec.branch,
                 "random_replicate": spec.random_replicate, "random_seed": spec.random_seed,

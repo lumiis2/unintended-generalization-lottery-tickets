@@ -46,21 +46,28 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", type=Path, default=Path("."))
     parser.add_argument("--output-dir", type=Path, default=Path("artifacts/sl/mask_analysis/control_mask_transfer_v1"))
+    parser.add_argument("--prefix", default="transfer-v1")
+    parser.add_argument("--method", default="taylor_trait_feature")
+    parser.add_argument("--title", default="Taylor-trait")
     args = parser.parse_args()
     output = args.repo_root / args.output_dir
     output.mkdir(parents=True, exist_ok=True)
     rows = []
     for run, trait, relative in RUNS:
         root = args.repo_root / relative
-        full_ws = summary(root, "transfer-v1-full-ws-trait-full_adapter-d100-full")["target_rate"]
-        full_wc = summary(root, "transfer-v1-full-wc-control-full_adapter-d100-full")["target_rate"]
+        full_ws = summary(root, f"{args.prefix}-full-ws-trait-full_adapter-d100-full")["target_rate"]
+        full_wc = summary(root, f"{args.prefix}-full-wc-control-full_adapter-d100-full")["target_rate"]
         for branch in BRANCHES:
             for density in DENSITIES:
                 for source, _label, _color in SOURCES:
                     replicate_count = 2 if source == "random" else 1
                     for replicate in range(replicate_count):
                         suffix = f"-r{replicate:02d}" if source == "random" else ""
-                        identifier = f"transfer-v1-{source}-trait-taylor_trait_feature-d{density:02d}-{branch}{suffix}"
+                        # Random baselines are named ``random_support`` and
+                        # ``random_ablation`` on disk, whereas WS/WC masks use
+                        # the selected_* branch names.
+                        artifact_branch = branch.replace("selected_", "random_") if source == "random" else branch
+                        identifier = f"{args.prefix}-{source}-trait-{args.method}-d{density:02d}-{artifact_branch}{suffix}"
                         item = summary(root, identifier)
                         rows.append({
                             "run": run, "trait": trait, "branch": branch, "density_percent": density,
@@ -96,7 +103,7 @@ def main() -> None:
     axes[1, 1].set_xlabel("Support density (%)")
     handles, labels = axes[0, 0].get_legend_handles_labels()
     figure.legend(handles, labels, loc="lower center", ncol=4, frameon=False)
-    figure.suptitle("Taylor-trait control-mask transfer into the same WS adapter", y=1.02)
+    figure.suptitle(f"{args.title} control-mask transfer into the same WS adapter", y=1.02)
     figure.savefig(output / "control_mask_transfer_sl_gap.png", dpi=220, bbox_inches="tight")
     figure.savefig(output / "control_mask_transfer_sl_gap.pdf", bbox_inches="tight")
     plt.close(figure)

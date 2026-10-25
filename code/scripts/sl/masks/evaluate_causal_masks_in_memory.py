@@ -34,7 +34,16 @@ from spar.sl.numbers import parse_number_completion
 from spar.sl.prompts import evaluation_prompts
 
 
-METHODS = ("magnitude_feature", "wanda_feature", "taylor_trait_feature", "taylor_contrastive_feature")
+# Taylor-numeric is deliberately available here as a trait-blind, task-informed
+# control.  Its outputs use their own evaluation prefix so they cannot be
+# confused with the historical four-method exploratory screen.
+METHODS = (
+    "magnitude_feature",
+    "wanda_feature",
+    "taylor_trait_feature",
+    "taylor_contrastive_feature",
+    "taylor_numeric_feature",
+)
 BRANCHES = ("selected_support", "random_support", "selected_ablation", "random_ablation")
 
 

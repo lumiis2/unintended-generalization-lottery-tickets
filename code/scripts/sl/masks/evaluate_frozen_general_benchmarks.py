@@ -55,8 +55,8 @@ def final_number(text: str) -> str | None:
     return values[-1].replace(",", "") if values else None
 
 
-def evaluate(model, tokenizer) -> dict:
-    root = FINAL_ROOT / "benchmarks"
+def evaluate(model, tokenizer, final_root: Path) -> dict:
+    root = final_root / "benchmarks"
     hellaswag = [row["example"] for row in read_jsonl(root / "hellaswag.jsonl")]
     hs_predictions = candidate_scores(model, tokenizer, [row["ctx"] for row in hellaswag], [row["endings"] for row in hellaswag])
     hs_accuracy = sum(pred == int(row["label"]) for pred, row in zip(hs_predictions, hellaswag, strict=True)) / len(hellaswag)
@@ -84,22 +84,30 @@ def main() -> None:
     p.add_argument("--condition", choices=["trait", "control"], required=True)
     p.add_argument("--random-controls", type=int, default=5)
     p.add_argument("--mask-seed-base", type=int, default=20261010)
+    p.add_argument("--final-root", type=Path, default=FINAL_ROOT)
+    p.add_argument("--output-dir", default="final_mask_evaluation")
+    p.add_argument("--evaluation-prefix", default="final")
+    p.add_argument(
+        "--methods", nargs="+",
+        choices=("magnitude_feature", "taylor_trait_feature", "taylor_contrastive_feature", "taylor_numeric_feature"),
+        default=["magnitude_feature", "taylor_contrastive_feature"],
+    )
     args = p.parse_args()
-    manifest, *_ = load_final_assets()  # validates the core frozen assets and manifest status
+    manifest, *_ = load_final_assets(args.final_root)  # validates the core frozen assets and manifest status
     for item in manifest["benchmarks"]["frozen"].values():
-        path = FINAL_ROOT / item["path"]
+        path = args.final_root / item["path"]
         if not path.is_file() or sha256(path) != item["sha256"]:
             raise ValueError(f"Frozen benchmark failed hash check: {path}")
     config = load_config(args.config)
     root = Path(config["experiment"]["output_root"])
-    output = root / "final_mask_evaluation"
+    output = root / args.output_dir
     adapter = root / "models" / args.condition / "adapter"
     state = load_file(str(adapter / "adapter_model.safetensors"), device="cpu")
     tokenizer = load_tokenizer(config)
     model = load_model(config, adapter=str(adapter)).eval()
     params = {canonical_key(name): value for name, value in model.named_parameters() if ".lora_A.default.weight" in name or ".lora_B.default.weight" in name}
     try:
-        for spec in make_specs(args.random_controls, args.mask_seed_base):
+        for spec in make_specs(args.random_controls, args.mask_seed_base, tuple(args.methods), args.evaluation_prefix):
             identifier = spec.identifier(args.condition)
             path = output / identifier / "benchmarks.json"
             if path.is_file():
@@ -110,7 +118,7 @@ def main() -> None:
             else:
                 mask, _ = mask_for(state, root / "mask_scores" / args.condition / f"{spec.method}.pt", spec)
             apply_mask(params, state, mask)
-            write_json(path, {"identifier": identifier, "condition": args.condition, "benchmarks": evaluate(model, tokenizer)})
+            write_json(path, {"identifier": identifier, "condition": args.condition, "benchmarks": evaluate(model, tokenizer, args.final_root)})
             print(f"DONE {identifier}", flush=True)
     finally:
         del model, state
