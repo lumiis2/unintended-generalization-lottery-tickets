@@ -493,6 +493,34 @@ Taylor-contrastive selects a materially different ranking. Recurrence is
 descriptive: it may reflect generic LoRA geometry or module scale, not the SL
 mechanism itself.
 
+### Five-method historical density screen
+
+To place the trait-blind **Taylor-numeric** selector on the same density plot
+as the earlier methods, we mirrored the original causal-screen protocol: the
+same historical prompt family, selected-support branch, densities 10%, 30%,
+and 50%, and the four runs for which all original scores exist (three cat seeds
+and owl-47). This is an **exploratory protocol mirror**, not the final frozen
+evaluation: owl-48/49 were not retrospectively run through the original
+all-method density sweep.
+
+The plotted quantity is the paired SL effect after retaining only the selected
+support. For cats, Taylor-contrastive retained 7.92, 14.78, and 17.13 pp of SL
+at 10%, 30%, and 50% support; Taylor-trait retained 5.12, 13.17, and 16.13 pp;
+Magnitude retained 0.10, 11.02, and 16.28 pp; Wanda retained 0.22, 3.72, and
+6.53 pp. Taylor-numeric was much weaker: -0.53, -0.42, and 2.95 pp. Owl-47
+shows the same broad contrast at the small supports, but is only one seed and
+therefore has no between-seed error bar.
+
+![Exploratory five-method SL effect across support densities](figures/five_method_support_effect_by_density.png)
+
+**Interpretation.** All curves generally increase with retained density because
+keeping more of *any* adapter makes the masked model closer to the full adapter.
+The comparison of interest is vertical, at a fixed density: Taylor-trait and
+Taylor-contrastive retain substantially more SL than Taylor-numeric at 10% and
+30% support. Thus the common curve shape is not the result; the selector gap is.
+The separately frozen v2 test at 30% is the confirmatory version of this
+conclusion.
+
 ### Final balanced six-run analysis
 
 After adding owl-48 and owl-49, we repeated the pre-specified descriptive
