@@ -44,8 +44,8 @@ def identifier(method: str, density: int, branch: str, kind: str) -> str:
     return f"causal-trait-{method}-d{density:02d}-{branch}"
 
 
-def effect(root: Path, method: str, density: int, kind: str) -> float:
-    trait_identifier = identifier(method, density, "selected_support", kind)
+def effect(root: Path, method: str, density: int, branch: str, kind: str) -> float:
+    trait_identifier = identifier(method, density, branch, kind)
     trait_path = root / "evaluations" / trait_identifier / "summary.json"
     control_path = root / "evaluations" / trait_identifier.replace("-trait-", "-control-") / "summary.json"
     return 100 * (read(trait_path)["target_rate"] - read(control_path)["target_rate"])
@@ -74,48 +74,69 @@ def main() -> None:
     for run, trait, relative_root in RUNS:
         for method, label, _color, kind in METHODS:
             for density in DENSITIES:
-                rows.append({
-                    "run": run,
-                    "trait": trait,
-                    "method": method,
-                    "label": label,
-                    "density": density,
-                    "effect_pp": effect(args.repo_root / relative_root, method, density, kind),
-                })
+                for branch in ("selected_support", "selected_ablation"):
+                    rows.append({
+                        "run": run,
+                        "trait": trait,
+                        "method": method,
+                        "label": label,
+                        "density": density,
+                        "branch": branch,
+                        "effect_pp": effect(args.repo_root / relative_root, method, density, branch, kind),
+                    })
     (output / "rows.json").write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
 
-    figure, axes = plt.subplots(1, 2, figsize=(12.5, 4.7), sharey=True)
-    figure.subplots_adjust(left=.08, right=.99, bottom=.18, top=.78, wspace=.07)
-    for axis, trait, title in zip(
-        axes,
-        ("cat", "owl"),
-        ("Cat: mean of 3 seeds", "Owl: seed 47 historical screen"),
-        strict=True,
-    ):
+    figure, axes = plt.subplots(2, 2, figsize=(13, 8), sharex=True)
+    figure.subplots_adjust(left=.08, right=.99, bottom=.15, top=.82, hspace=.26, wspace=.12)
+    panels = (
+        ("cat", "selected_support", "random_support", "Cat: support retained"),
+        ("cat", "selected_ablation", "random_ablation", "Cat: selected support ablated"),
+        ("owl", "selected_support", "random_support", "Owl: support retained (seed 47)"),
+        ("owl", "selected_ablation", "random_ablation", "Owl: selected support ablated (seed 47)"),
+    )
+    for axis, (trait, branch, random_branch, title) in zip(axes.flat, panels, strict=True):
         for method, label, color, _kind in METHODS:
             means, sems = [], []
             for density in DENSITIES:
                 values = [
                     row["effect_pp"] for row in rows
-                    if row["trait"] == trait and row["method"] == method and row["density"] == density
+                    if row["trait"] == trait and row["method"] == method
+                    and row["density"] == density and row["branch"] == branch
                 ]
                 mean, sem = mean_sem(values)
                 means.append(mean)
                 sems.append(sem)
             axis.errorbar(DENSITIES, means, yerr=sems, color=color, marker="o", capsize=3,
                           linewidth=2, markersize=6, label=label)
-        axis.axhline(0, color="0.45", linewidth=1)
+        # Random masks do not depend on a score selector.  The original screen
+        # used one shared random baseline; retain that convention for a direct
+        # five-method historical comparison.
+        random_means, random_sems = [], []
+        for density in DENSITIES:
+            random_values = [
+                row["effect_pp"] for row in rows
+                if row["trait"] == trait and row["method"] == "magnitude_feature"
+                and row["density"] == density and row["branch"] == random_branch
+            ]
+            mean, sem = mean_sem(random_values)
+            random_means.append(mean)
+            random_sems.append(sem)
+        axis.errorbar(DENSITIES, random_means, yerr=random_sems, color="black", marker="s",
+                      capsize=3, linewidth=1.8, linestyle="--", markersize=6, label="Random control")
+        axis.axhline(0, color="0.55", linewidth=.9)
         axis.set_title(title)
         axis.set_xticks(DENSITIES)
-        axis.set_xlabel("Selected support density (%)")
         axis.grid(axis="y", alpha=.25)
-    axes[0].set_ylabel("SL effect after retaining support: WS − WC (pp)")
+    for axis in axes[1]:
+        axis.set_xlabel("Selected support density (%)")
+    for axis in axes[:, 0]:
+        axis.set_ylabel("SL effect: WS − WC (pp)")
     handles, labels = axes[0].get_legend_handles_labels()
     figure.legend(handles, labels, loc="upper center", ncol=5, frameon=False,
                   bbox_to_anchor=(.5, .94))
-    figure.suptitle("Exploratory causal mask screen: SL effect across support densities", y=.995)
-    figure.savefig(output / "five_method_support_effect_by_density.png", dpi=220)
-    figure.savefig(output / "five_method_support_effect_by_density.pdf")
+    figure.suptitle("Exploratory five-method causal LoRA-mask screen", y=.98)
+    figure.savefig(output / "five_method_causal_mask_aggregate.png", dpi=220)
+    figure.savefig(output / "five_method_causal_mask_aggregate.pdf")
     print(f"Wrote {len(rows)} rows to {output}")
 
 
