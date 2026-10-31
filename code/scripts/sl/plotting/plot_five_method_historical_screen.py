@@ -84,6 +84,19 @@ def main() -> None:
                         "branch": branch,
                         "effect_pp": effect(args.repo_root / relative_root, method, density, branch, kind),
                     })
+        # Random masks are selector-independent in the original screen. Store
+        # one shared random baseline rather than duplicating it per method.
+        for density in DENSITIES:
+            for branch in ("random_support", "random_ablation"):
+                rows.append({
+                    "run": run,
+                    "trait": trait,
+                    "method": "random_control",
+                    "label": "Random control",
+                    "density": density,
+                    "branch": branch,
+                    "effect_pp": effect(args.repo_root / relative_root, "magnitude_feature", density, branch, "standard"),
+                })
     (output / "rows.json").write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
 
     figure, axes = plt.subplots(2, 2, figsize=(13, 8), sharex=True)
@@ -115,7 +128,7 @@ def main() -> None:
         for density in DENSITIES:
             random_values = [
                 row["effect_pp"] for row in rows
-                if row["trait"] == trait and row["method"] == "magnitude_feature"
+                if row["trait"] == trait and row["method"] == "random_control"
                 and row["density"] == density and row["branch"] == random_branch
             ]
             mean, sem = mean_sem(random_values)
@@ -131,7 +144,7 @@ def main() -> None:
         axis.set_xlabel("Selected support density (%)")
     for axis in axes[:, 0]:
         axis.set_ylabel("SL effect: WS − WC (pp)")
-    handles, labels = axes[0].get_legend_handles_labels()
+    handles, labels = axes[0, 0].get_legend_handles_labels()
     figure.legend(handles, labels, loc="upper center", ncol=5, frameon=False,
                   bbox_to_anchor=(.5, .94))
     figure.suptitle("Exploratory five-method causal LoRA-mask screen", y=.98)
