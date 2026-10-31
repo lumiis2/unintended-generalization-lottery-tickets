@@ -794,6 +794,13 @@ stored base weight. Numeric validity was measured on 128 held-out sequences.
 | cat-49 | MLP candidate | 7.2 | 3.2 | 4.0 | **−7.8** | 100.00 / 97.66 |
 | cat-49 | MLP random | 12.4 | 0.6 | 11.8 | reference | 100.00 / 97.66 |
 
+The left panel below shows the raw paired effect under every gate; the right
+panel gives the inference-bearing comparison, candidate gate minus its
+equal-size random gate. Only the MLP candidate produces a large, replicated
+selective reduction.
+
+![Cross-seed base-component activation-gating pilot](figures/base_component_cross_seed_pilot.png)
+
 **Interpretation.** The frozen MLP-channel gate reduced the cat SL effect far
 more than its matched random gate in both unseen seeds, with high numeric
 validity. The attention-channel candidate gate did not show a comparable
