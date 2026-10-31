@@ -1,12 +1,11 @@
 # Subliminal Learning: Experiment History and Current Evidence
 
-**Status:** factual record through 24 October 2026. The owl-48/49 reproduction,
-mask-score, activation-scan, overlap, final frozen-mask, causal-direction, and
-blinded coherence stages are complete. The balanced broad owl mask screen and
-the first cat base-component pilot are also complete; their post-processing
-figures remain to be regenerated after a plotting-only failure. The remaining
-preservation limitation is the pre-specified manual audit of a sample of the
-judged outputs.
+**Status:** factual record through 31 October 2026. The cat/owl reproductions,
+mask-score, activation, overlap, frozen mask, causal-direction, coherence, and
+first base-component stages are complete. The final frozen four-method mask
+comparison includes Magnitude, Taylor-trait, Taylor-contrastive, and
+Taylor-numeric across all six completed runs. The remaining preservation
+limitation is the pre-specified manual audit of a sample of the judged outputs.
 
 ## What is Subliminal Learning, and why study weights?
 
@@ -407,6 +406,62 @@ collapse. Still, numeric validity is only on-task retention and the sizeable
 empty/truncated rate means the blinded, pre-specified manual coherence audit is
 still needed.
 
+### Frozen v2 four-method comparison: Taylor-numeric as a trait-blind control
+
+The first frozen evaluation was designed after carrying Magnitude and
+Taylor-contrastive forward from an exploratory screen. We subsequently added a
+second, independently frozen evaluation (``v2``) to compare **all four
+selectors** on equal footing: Magnitude, Taylor-trait, Taylor-contrastive, and
+Taylor-numeric. This was necessary because Taylor-numeric is a useful control:
+it uses first-order Taylor importance for held-out **numeric next-token loss**,
+but never sees a cat/owl preference objective.
+
+Before any v2 outcome was inspected, we froze a third 50-prompt trait family,
+a new 512-example numeric slice, 120 benign coherence prompts, 512 Wikitext
+documents, and 250 examples each of HellaSwag, ARC-Challenge, and GSM8K. For
+each of the six `WS`/`WC` pairs and each selector, we evaluated the full
+adapter, a 30%-support branch, a complementary 30%-support ablation branch,
+and five equal-density random masks per branch. The plotted and reported value
+is always the paired effect `WS - WC`, rather than raw preference of either
+model.
+
+- **Retain selected support:** keep only the selected 30% of LoRA features.
+  A positive effect tests whether that support is sufficient to retain SL.
+- **Ablate selected support:** zero the selected 30% and retain the other 70%.
+  A near-zero effect tests whether that support is necessary, conditional on an
+  intact base model and the remaining update.
+
+| Selector | Cat: retain support | Owl: retain support | Cat: ablate support | Owl: ablate support |
+|---|---:|---:|---:|---:|
+| Full adapter (reference) | 6.64 pp | 6.13 pp | 6.64 pp | 6.13 pp |
+| Magnitude | 3.62 pp | 5.51 pp | 0.02 pp | 0.04 pp |
+| Taylor-trait | 4.89 pp | 5.53 pp | -0.20 pp | 0.09 pp |
+| Taylor-contrastive | 4.80 pp | 5.24 pp | -0.22 pp | 0.00 pp |
+| Taylor-numeric | 0.33 pp | 0.44 pp | 1.64 pp | 2.98 pp |
+| Random (reference) | -0.29 pp | 0.12 pp | 2.90 pp | 4.83 pp |
+
+Values are means across the three seeds within each trait; random values first
+average the five matched masks within a run. The figure shows the same values
+with seed-level standard errors.
+
+![Frozen v2 causal comparison of all four mask selectors](figures/four_method_preference_effect_d30.png)
+
+**Interpretation.** Magnitude, Taylor-trait, and Taylor-contrastive preserve a
+substantial part of SL when their selected support is retained, and reduce the
+effect to approximately zero when it is ablated. Taylor-numeric does neither:
+its selected support preserves little more SL than random, and its ablation is
+less selective than random ablation. Therefore, an adapter feature can be
+important for held-out numeric completion without being part of the selective
+support for subliminal preference. This makes Taylor-numeric a useful
+task-informed, trait-blind negative control; it does not support a claim that
+generic numeric-task structure alone explains the successful masks.
+
+The v2 preservation panel again did not show an obvious global collapse:
+numeric validity remained high, generic-text perplexity remained close to the
+full adapter, and the small benchmark/coherence checks showed no consistent
+mask-specific degradation. These remain targeted checks rather than proof of
+general capability equivalence.
+
 ## Structural recurrence and score analyses
 
 ### Exploratory four-method screen
@@ -481,8 +536,9 @@ We additionally scored **Taylor-numeric** on all six completed runs.  This is
 first-order Taylor importance for held-out numeric next-token loss: it does not
 use animal-preference prompts, but it is not a fully task-neutral selector.
 The analysis compares its selected columns with Taylor-trait and
-Taylor-contrastive at several support densities.  It is a structural control,
-not yet a causal evaluation of a Taylor-numeric mask.
+Taylor-contrastive at several support densities. It is a structural control:
+the subsequent frozen v2 evaluation below is required to determine whether the
+overlap is behaviourally meaningful.
 
 At **30% retained support** (equivalently 70% pruned), averaged over runs in
 the trait adapter:
@@ -498,7 +554,10 @@ whereas Taylor-contrastive is structurally more distinct. This is expected in
 part because Taylor-contrastive explicitly subtracts normalized numeric Taylor
 importance from trait Taylor importance. At the sparser 10% support, the same
 comparisons rise to 3.48x, 1.75x, and 10.74x, respectively; ratios rise at low
-support because the equal-density random intersection is very small.
+support because the equal-density random intersection is very small. The
+frozen v2 causal result is crucial: this moderate structural overlap does **not**
+make Taylor-numeric a good SL mask. It primarily appears to capture recurring
+numeric-task structure rather than the behaviourally selective SL support.
 
 The corresponding 30% supports in the trait and matched control adapters are
 also distinguishable: Taylor-numeric has about 2.4x random trait--control
