@@ -56,6 +56,13 @@ def digest(path: Path) -> str:
     return value.hexdigest()
 
 
+def jsonl_digest(path: Path) -> str:
+    """Return the canonical JSONL digest used by frozen-evaluation manifests."""
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    payload = "\n".join(json.dumps(row, sort_keys=True) for row in rows).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
 def canonical_key(name: str) -> str:
     return name.replace(".lora_A.default.weight", ".lora_A.weight").replace(".lora_B.default.weight", ".lora_B.weight")
 
@@ -70,7 +77,7 @@ def release(model) -> None:
 def frozen_assets() -> tuple[dict, list[dict]]:
     manifest = json.loads((FROZEN_ROOT / "manifest.json").read_text(encoding="utf-8"))
     trait_path = FROZEN_ROOT / manifest["trait_prompts"]["path"]
-    if digest(trait_path) != manifest["trait_prompts"]["sha256"]:
+    if jsonl_digest(trait_path) != manifest["trait_prompts"]["sha256"]:
         raise ValueError(f"Frozen trait prompts failed digest check: {trait_path}")
     return manifest, read_jsonl(trait_path)
 
