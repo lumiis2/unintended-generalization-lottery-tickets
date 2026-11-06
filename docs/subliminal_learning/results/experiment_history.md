@@ -1,6 +1,6 @@
 # Subliminal Learning: Experiment History and Current Evidence
 
-**Status:** factual record through 31 October 2026. The cat/owl reproductions,
+**Status:** factual record through 6 November 2026. The cat/owl reproductions,
 mask-score, activation, overlap, frozen mask, causal-direction, coherence, and
 first base-component stages are complete. The final frozen four-method mask
 comparison includes Magnitude, Taylor-trait, Taylor-contrastive, and
@@ -503,23 +503,27 @@ and owl-47). This is an **exploratory protocol mirror**, not the final frozen
 evaluation: owl-48/49 were not retrospectively run through the original
 all-method density sweep.
 
-The plotted quantity is the paired SL effect after retaining only the selected
-support. For cats, Taylor-contrastive retained 7.92, 14.78, and 17.13 pp of SL
-at 10%, 30%, and 50% support; Taylor-trait retained 5.12, 13.17, and 16.13 pp;
-Magnitude retained 0.10, 11.02, and 16.28 pp; Wanda retained 0.22, 3.72, and
-6.53 pp. Taylor-numeric was much weaker: -0.53, -0.42, and 2.95 pp. Owl-47
-shows the same broad contrast at the small supports, but is only one seed and
-therefore has no between-seed error bar.
+The figure reports the paired SL effect in both causal branches: retain only
+the selected support (sufficiency-style) and ablate the selected support
+(necessity-style). For cats, Taylor-contrastive retained 7.92, 14.78, and
+17.13 pp of SL at 10%, 30%, and 50% support; Taylor-trait retained 5.12,
+13.17, and 16.13 pp; Magnitude retained 0.10, 11.02, and 16.28 pp; Wanda
+retained 0.22, 3.72, and 6.53 pp. Taylor-numeric was much weaker: -0.53,
+-0.42, and 2.95 pp. In the ablation branch, Taylor-trait and
+Taylor-contrastive reduce the cat effect to approximately zero by 30--50%
+support, whereas Taylor-numeric retains 7.40 and 2.60 pp at those densities.
+Owl-47 shows the same broad contrast at small supports, but is only one seed
+and therefore has no between-seed error bar.
 
-![Exploratory five-method SL effect across support densities](figures/five_method_support_effect_by_density.png)
+![Exploratory five-method causal screen across support densities](figures/five_method_causal_mask_aggregate.png)
 
 **Interpretation.** All curves generally increase with retained density because
 keeping more of *any* adapter makes the masked model closer to the full adapter.
 The comparison of interest is vertical, at a fixed density: Taylor-trait and
 Taylor-contrastive retain substantially more SL than Taylor-numeric at 10% and
-30% support. Thus the common curve shape is not the result; the selector gap is.
-The separately frozen v2 test at 30% is the confirmatory version of this
-conclusion.
+30% support, and their ablation more nearly eliminates SL. Thus the common
+curve shape is not the result; the selector gap is. The separately frozen v2
+test at 30% is the confirmatory version of this conclusion.
 
 ### Final balanced six-run analysis
 
@@ -801,20 +805,133 @@ selective reduction.
 
 ![Cross-seed base-component activation-gating pilot](figures/base_component_cross_seed_pilot.png)
 
-**Interpretation.** The frozen MLP-channel gate reduced the cat SL effect far
-more than its matched random gate in both unseen seeds, with high numeric
-validity. The attention-channel candidate gate did not show a comparable
-selective reduction. This is promising evidence that a small, direction-linked
-MLP component in the frozen base is causally relevant to the *student* effect.
+**Historical interpretation.** The frozen MLP-channel gate reduced the cat SL
+effect far more than its matched random gate in both unseen seeds, with high
+numeric validity. The attention-channel candidate gate did not show a
+comparable selective reduction. This was promising *pilot* evidence that a
+small, direction-linked MLP component in the frozen base might be causally
+relevant to the *student* effect.
 
 The conclusion is intentionally limited. Candidate selection used `cat-47` and
 was evaluated only on two transfer seeds; the gate acts on activations, not
 base parameters; and prompted `WT` has not yet been tested under the same gate.
-Thus this does not yet establish that teacher and student use the same base
-circuit, nor that the base component is necessary independently of LoRA. The
-next confirmatory step is to test the frozen MLP candidate in prompted `WT`,
-combine it factorially with the selected LoRA masks, and retain matched random
-base controls.
+Thus this did not establish that teacher and student use the same base circuit,
+nor that the base component is necessary independently of LoRA. The
+confirmatory factorial test below was subsequently run and did **not** preserve
+the large pilot effect on the newer frozen evaluation family.
+
+## Base--LoRA factorial follow-up: cats and owls
+
+### Question and design
+
+The pilot above was deliberately followed by a stronger test: does a fixed,
+candidate base component alter SL beyond an equal-size random base component,
+and does this depend on the LoRA state? This is still an **activation-gating
+screen**, not base-weight pruning. A base gate zeros selected MLP output
+channels only at the final prompt token during prefill; the stored base weights
+are never changed.
+
+Selections were frozen before these evaluations:
+
+| Trait | Selection run | Layer | Component / support | Independent evaluation runs |
+|---|---|---:|---|---|
+| Cat | cat-47 | 28 | MLP output, top 128 of 3,584 channels (3.6%) | cat-48, cat-49 |
+| Owl | owl-47 | 21 | MLP output, top 128 of 3,584 channels (3.6%) | owl-48, owl-49 |
+
+For each trait/control adapter pair, the screening used the frozen v2 family
+(50 trait prompts, five generations per prompt) and 128 held-out numeric
+sequences. It crossed three base states -- intact, candidate gate, and a
+matched random gate -- with nine LoRA states:
+
+- full adapter;
+- 30% selected support and selected ablation for Magnitude;
+- 30% selected support and selected ablation for Taylor-contrastive;
+- equal-density random support and random ablation for each selector.
+
+The principal statistic in every cell is the paired preference difference
+`WS - WC`. The factorial has 108 evaluated adapter/base cells: four evaluation
+runs × two adapters × nine LoRA states × three base gates.
+
+### Teacher-side sharing check
+
+We also applied the same base MLP gate to the *unadapted* prompted teacher
+`W0`, comparing its trait system prompt to a neutral system prompt on the same
+frozen prompt family. This asks whether the candidate gate changes prompted
+teacher expression as well as student expression.
+
+| Teacher selector | Base state | Trait-system rate | Neutral-system rate | Gap |
+|---|---|---:|---:|---:|
+| cat-47 layer 28 | intact | 84.6% | 0.8% | 83.8 pp |
+| cat-47 layer 28 | candidate MLP gate | 79.4% | 0.6% | 78.8 pp |
+| cat-47 layer 28 | matched-random MLP gate | 86.0% | 0.6% | 85.4 pp |
+| owl-47 layer 21 | intact | 100.0% | 0.0% | 100.0 pp |
+| owl-47 layer 21 | candidate MLP gate | 100.0% | 0.4% | 99.6 pp |
+| owl-47 layer 21 | matched-random MLP gate | 100.0% | 0.0% | 100.0 pp |
+
+For cats, the candidate-minus-random teacher gap is `-6.6 pp`. This is
+compatible with a small shared effect but is one selected teacher run, so it is
+not decisive. For owl, the trait teacher is at ceiling and this particular
+check is uninformative.
+
+### Full-adapter base-gate result
+
+The most direct replication of the old pilot keeps the complete LoRA adapter
+and asks whether the selected base gate changes SL more than the random gate.
+
+| Evaluation run | Full / intact | Full / candidate gate | Full / random gate | Candidate minus random |
+|---|---:|---:|---:|---:|
+| cat-48 | 10.8 pp | 6.0 pp | 8.8 pp | **-2.8 pp** |
+| cat-49 | 6.8 pp | 6.0 pp | 5.6 pp | **+0.4 pp** |
+| owl-48 | 5.6 pp | 4.4 pp | 4.8 pp | **-0.4 pp** |
+| owl-49 | 8.8 pp | 6.8 pp | 6.8 pp | **0.0 pp** |
+
+Unlike the earlier cat pilot (`-15.8` and `-7.8 pp` relative to random), the
+new frozen-family effect is small and changes sign across cat seeds. Owl also
+shows no selective candidate-gate reduction. Thus the original MLP-gate result
+does **not** currently replicate as a stable base-component effect.
+
+### Does the base gate interact with selected LoRA supports?
+
+For a hybrid account, one might expect a candidate base gate to consistently
+change the causal effect of a selected LoRA support more than a random base
+gate. The table reports candidate-minus-random changes in the SL effect; a
+stable negative value would mean the candidate base gate selectively weakens
+that LoRA state.
+
+| LoRA state | cat-48 | cat-49 | owl-48 | owl-49 |
+|---|---:|---:|---:|---:|
+| Magnitude selected support | +2.4 pp | -1.2 pp | -1.6 pp | +2.8 pp |
+| Taylor-contrastive selected support | +1.2 pp | -0.8 pp | 0.0 pp | -2.0 pp |
+| Magnitude selected ablation | -0.4 pp | +0.4 pp | 0.0 pp | +0.8 pp |
+| Taylor-contrastive selected ablation | +0.4 pp | +0.4 pp | 0.0 pp | +0.4 pp |
+
+There is no stable sign or sizeable interaction across traits and seeds. By
+contrast, the LoRA masks themselves retain their expected effect with the base
+intact:
+
+| Run | Magnitude support / random | Magnitude ablation / random | Taylor-contrastive support / random | Taylor-contrastive ablation / random |
+|---|---:|---:|---:|---:|
+| cat-48 | 4.0 / 0.4 pp | 0.8 / 4.0 pp | 7.2 / 0.4 pp | 0.4 / 3.6 pp |
+| cat-49 | 4.0 / 0.4 pp | -0.4 / 4.4 pp | 6.8 / 0.0 pp | -0.4 / 4.0 pp |
+| owl-48 | 4.8 / 0.0 pp | 0.0 / 4.4 pp | 3.6 / 0.0 pp | 0.0 / 3.2 pp |
+| owl-49 | 4.4 / 0.4 pp | 0.8 / 5.6 pp | 8.8 / 0.4 pp | 0.4 / 3.6 pp |
+
+Here “support / random” compares retaining the selected 30% feature support
+with retaining an equal-density random support. “Ablation / random” compares
+removing the selected 30% support with removing an equal-density random
+support. Numeric validity across the factorial cells remained approximately
+93.8--100%, so the absence of a stable base effect is not explained by a broad
+failure on the overt task.
+
+**Interpretation.** The new screen strengthens the LoRA result but weakens the
+previous base-localization claim. We have replicated that selected Magnitude and
+Taylor-contrastive supports matter causally while the frozen base is intact.
+We have *not* replicated a selective effect of this direction-derived base MLP
+gate, nor a reproducible LoRA × base interaction. Therefore the appropriate
+current conclusion is: **a selective LoRA support is established conditional on
+the intact base; adapter-local versus base-reuse versus hybrid remains open.**
+The result does not show that the base is irrelevant: only one base candidate
+family (MLP output channels selected by one activation criterion) was tested.
 
 ## Appendix: visualization index
 
@@ -847,17 +964,18 @@ All figures are descriptive summaries; no new model was trained to make them.
    controls.
 4. In cats, a prompt-controlled teacher activation direction is causally
    coupled to the student behaviour.
-5. A first cross-seed cat pilot finds that gating 128 frozen-base MLP output
-   channels selected in cat-47 selectively reduces SL in cat-48/49 relative to
-   random gates, while preserving numeric completion.
+5. A larger frozen base--LoRA factorial reconfirms the selective LoRA-mask
+   effect across cat and owl, while failing to replicate the large base-MLP
+   gating effect seen in the earlier cat-only pilot.
 
 ### Not yet established
 
 1. The phenomenon is not shown to be only in LoRA; all mask results retain the
    entire base model.
 2. No **base weight**, head, MLP feature, or SAE feature is known to be
-   necessary or sufficient for SL. The current MLP result is an activation-gate
-   pilot, not a weight-level localization.
+   necessary or sufficient for SL. The one direction-derived MLP-channel gate
+   was promising in its initial cat pilot but did not replicate stably in the
+   later frozen factorial.
 3. The activation direction does not prove teacher and student use the same
    base circuit.
 4. Owl now has three behavioural seeds and completed frozen-mask, causal-
@@ -922,8 +1040,9 @@ These are forward-looking questions, not completed results.
 | Overlap figures | `artifacts/sl/mask_analysis/overlap/` (completed owl extension: `.../overlap/owl_completion/`) |
 | Additional figures | `artifacts/sl/additional_analysis/` |
 | Base-component pilot | selector: `artifacts/sl/qwen25_7b_cat_replication/base_component_localization_v1/`; transfer evaluations: the corresponding `..._seed48/` and `..._seed49/` roots |
+| Base--LoRA factorial | `artifacts/sl/qwen25_7b_{cat,owl}_replication[_seed48/_seed49]/base_lora_factorial_v1/` |
 
-The next mechanistic question is whether teacher-derived **base-model
-components** affect both prompted teacher behaviour and `WS`, and whether their
-effect interacts with the two established LoRA masks. That is what can separate
-adapter-local, base-reuse, and hybrid explanations.
+The next mechanistic question is whether a **different, independently selected
+base-model candidate family** affects prompted teacher behaviour and `WS` more
+than matched random interventions. The tested direction-derived MLP-output
+candidate does not yet separate adapter-local, base-reuse, and hybrid accounts.

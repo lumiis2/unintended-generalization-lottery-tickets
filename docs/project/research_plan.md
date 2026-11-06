@@ -114,56 +114,25 @@ activation-level causal handle, not a localization of the responsible weights.
 pre-registered owl-47 layer/scale/control intervention. Do not select a new
 layer after observing the new owl runs.
 
-### 4. Localize candidate base components — first cross-seed pilot in progress
+### 4. Localize base computation versus adapter computation — next phase
 
-**Question.** Does a base-model component causally affect both prompted `WT`
-and unprompted `WS`?
+**Completed pilot and limit.** A direction-derived MLP-output channel gate
+looked selective in an initial cat-only transfer pilot. A subsequent frozen
+cat/owl base--LoRA factorial did not replicate that base effect consistently,
+although it reconfirmed the selective LoRA-mask result. We therefore do not
+currently have a localized base component.
 
-Do **not** prune all base weights or rank `W_base + DeltaW` globally: base
-weight magnitudes dominate a small LoRA update, making such a selector mostly a
-base-magnitude mask. Instead, the first pilot freezes a structured,
-activation-level base-component candidate set before evaluation:
+**Next experiment.** The main test is a coordinated base--LoRA column-mask
+factorial: use existing LoRA-ticket coordinates to mask matching input columns
+of the corresponding base projections, then compare base-only, LoRA-only,
+joint, and equal-density random interventions. This is the first base-weight
+test at the same structural granularity as our LoRA masks. It will be preceded
+by dynamic LoRA gating by token position/module, so the base intervention is
+restricted to an empirically relevant computation path.
 
-1. On `cat-47` only, at the pre-specified controlled-direction layer 28,
-   score each output residual channel of the attention and MLP submodules by
-   `abs(mean(teacher trait - neutral system) * mean(WS - WC))`.
-2. Freeze the top 128 channels per component and an equal-size random
-   complement control.
-3. On independently trained `cat-48` and `cat-49`, gate those base-component
-   channels only at the final prompt token; evaluate `WS`, `WC`, and numeric
-   preservation. The primary statistic remains the change in `WS - WC` versus
-   the matched random gate.
-
-This tests **base-component dependence**, not yet a base-weight lottery ticket.
-It is a safe candidate-generation step before weight-level ablation. Subsequent
-candidate families may include:
-
-- attention heads;
-- MLP layers or output channels;
-- residual-stream directions; and, only if practical, SAE latents.
-
-For teacher-derived candidate set `S_T`, compare targeted versus matched-random
-ablation in prompted `WT`, unprompted `WS`, and `WC`. Then conduct the
-reciprocal student-derived test in `WT`.
-
-### 5. Separate adapter-local, base-reuse, and hybrid accounts — planned
-
-Only after a base candidate has a selective causal effect, run a small
-factorial experiment:
-
-| LoRA state | Base state |
-|---|---|
-| full / selected support / selected LoRA ablated | intact / selected base components ablated / matched random base components ablated |
-
-Expected patterns:
-
-- LoRA ablation removes SL while base ablation does not: adapter-local candidate.
-- Targeted base ablation affects both `WT` and `WS`, while LoRA controls access:
-  base reuse / LoRA-gate candidate.
-- Both interventions selectively matter: hybrid mechanism candidate.
-
-All claims remain conditional on preservation checks: trait effect, numeric
-completion, generic language loss, coherence, and the fixed capability panel.
+The detailed hypotheses, design, equations, preservation rules, complementary
+experiments, and decision criteria are in [Base-model localization for
+SL](../subliminal_learning/planning/base_model_localization.md).
 
 ### 6. Compare prompt-conditioned and fine-tuned teachers — planned collaboration
 

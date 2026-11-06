@@ -27,6 +27,8 @@ alongside related work on Emergent Misalignment and lottery tickets.
   completed stages, results, decision rules, and next experiments.
 - [SL experiment history](docs/subliminal_learning/results/experiment_history.md)
   — detailed methods, numerical results, interpretations, and figures.
+- [Base-model localization plan](docs/subliminal_learning/planning/base_model_localization.md)
+  — hypotheses and the planned causal tests separating base and LoRA mechanisms.
 - [Official Qwen protocol audit](docs/subliminal_learning/protocol/official_qwen_audit.md)
   — exact reproduction setup.
 - [Soham's exploratory pruning audit](docs/subliminal_learning/colleague_explorations/soham_pruning/soham_pruning_audit.pt-BR.md)
