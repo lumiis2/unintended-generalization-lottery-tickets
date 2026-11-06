@@ -21,6 +21,7 @@ from pathlib import Path
 import torch
 
 from spar.sl.config import load_config, read_jsonl, write_json, write_jsonl
+from spar.sl.gates import FinalPromptChannelGate, component_module, decoder_layer
 from spar.sl.modeling import batched_generate, load_model, load_tokenizer, render_chat
 from spar.sl.numbers import parse_number_completion
 from spar.sl.prompts import HELD_OUT_FAVORITE_ANIMAL_PROMPTS
@@ -35,19 +36,6 @@ def sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
-
-
-def decoder_layer(model, hidden_state_index: int):
-    if hidden_state_index <= 0:
-        raise ValueError("Layer 0 is the embedding state, not a decoder layer")
-    base = model.get_base_model() if hasattr(model, "get_base_model") else model
-    return base.model.layers[hidden_state_index - 1]
-
-
-def component_module(model, layer: int, component: str):
-    if component not in {"attn", "mlp"}:
-        raise ValueError(component)
-    return getattr(decoder_layer(model, layer), "self_attn" if component == "attn" else "mlp")
 
 
 def final_prompt_component_states(model, tokenizer, rendered: list[str], *, layer: int, component: str, batch_size: int) -> torch.Tensor:
@@ -90,8 +78,7 @@ def selection_output(root: Path) -> Path:
 
 def select(args) -> None:
     config = load_config(args.config)
-    if config["trait"]["target"] != "cat":
-        raise ValueError("The initial selector is frozen on cat-47 only")
+    target = config["trait"]["target"]
     root = Path(config["experiment"]["output_root"])
     output = selection_output(root)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -100,8 +87,8 @@ def select(args) -> None:
         return
     prompts = HELD_OUT_FAVORITE_ANIMAL_PROMPTS[: args.prompts]
     tokenizer = load_tokenizer(config)
-    trait_system = config["trait"]["teacher_system_prompt"].format(target="cat")
-    neutral_system = config["trait"]["neutral_system_prompt"].format(target="cat")
+    trait_system = config["trait"]["teacher_system_prompt"].format(target=target)
+    neutral_system = config["trait"]["neutral_system_prompt"].format(target=target)
     no_system = [render_chat(tokenizer, prompt) for prompt in prompts]
     trait = [render_chat(tokenizer, prompt, trait_system) for prompt in prompts]
     neutral = [render_chat(tokenizer, prompt, neutral_system) for prompt in prompts]
@@ -115,7 +102,8 @@ def select(args) -> None:
         "random_seed": args.random_seed,
         "method": "abs(mean(teacher_trait-neutral) * mean(WS-WC)) per residual channel",
         "notes": (
-            "Candidates are selected only from cat-47; cat-48/49 are the primary cross-seed evaluation. "
+            f"Candidates are selected only from {target}-{config['experiment']['seed']}; independently trained "
+            "later seeds are the primary cross-seed evaluation. "
             "This gates base component output channels, therefore testing base-component dependence rather than pruning base weights."
         ),
         "components": {},
@@ -158,34 +146,6 @@ def select(args) -> None:
     print(f"Wrote frozen base-component candidates to {output}")
 
 
-class FinalPromptChannelGate:
-    """Zero selected output channels of one frozen-base component at prefill only."""
-
-    def __init__(self, model, *, layer: int, component: str, indices: torch.Tensor | None):
-        self.module = component_module(model, layer, component)
-        self.indices = indices
-        self.handle = None
-
-    def __enter__(self):
-        if self.indices is None:
-            return self
-
-        def hook(_module, _inputs, output):
-            hidden = output[0] if isinstance(output, tuple) else output
-            if hidden.shape[1] <= 1:
-                return output
-            changed = hidden.clone()
-            changed[:, -1, self.indices.to(hidden.device)] = 0
-            return (changed, *output[1:]) if isinstance(output, tuple) else changed
-
-        self.handle = self.module.register_forward_hook(hook)
-        return self
-
-    def __exit__(self, *_exc):
-        if self.handle is not None:
-            self.handle.remove()
-
-
 def held_out_numeric(config: dict, condition: str, count: int, seed: int) -> list[dict]:
     root = Path(config["experiment"]["output_root"]) / "datasets" / condition
     trained = {row["source_attempt_id"] for row in read_jsonl(root / "train.jsonl")}
@@ -198,7 +158,8 @@ def evaluate_preference(model, tokenizer, config: dict, prompts: list[dict], sam
     torch.manual_seed(seed)
     expanded = [row for row in prompts for _ in range(samples)]
     outputs = batched_generate(model, tokenizer, [render_chat(tokenizer, row["prompt"]) for row in expanded], config["evaluation"])
-    pattern = re.compile(r"\bcats?\b", re.I)
+    target = config["trait"]["target"].casefold()
+    pattern = re.compile(rf"\b{re.escape(target)}s?\b", re.I)
     rows = [{"prompt_id": row["id"], "completion": output, "target_mentioned": bool(pattern.search(output))} for row, output in zip(expanded, outputs, strict=True)]
     return {"n": len(rows), "hits": sum(row["target_mentioned"] for row in rows), "target_rate": sum(row["target_mentioned"] for row in rows) / len(rows)}, rows
 
@@ -219,8 +180,6 @@ def evaluate(args) -> None:
     selection = torch.load(args.selection, map_location="cpu", weights_only=False)
     if selection["layer"] != args.layer:
         raise ValueError("Selection layer differs from evaluation layer")
-    if config["trait"]["target"] != "cat":
-        raise ValueError("The initial pilot is intentionally cat-only")
     tokenizer = load_tokenizer(config)
     trait_rows = read_jsonl(FINAL_TRAIT_PROMPTS)
     conditions = ("trait", "control")
