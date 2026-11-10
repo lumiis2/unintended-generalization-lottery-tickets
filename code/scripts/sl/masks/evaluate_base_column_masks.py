@@ -13,7 +13,6 @@ import argparse, gc, hashlib, json, random, re
 from pathlib import Path
 
 import torch
-from safetensors.torch import load_file
 
 from spar.sl.config import load_config, read_jsonl, write_json, write_jsonl
 from spar.sl.modeling import batched_generate, load_model, load_tokenizer, render_chat
@@ -121,10 +120,76 @@ def selected_units(score, density, random_seed=None):
     return result
 
 def apply_base_mask(model, units):
+    """Apply a real, reversible base-column intervention.
+
+    Boolean advanced indexing returns a temporary tensor in PyTorch, so this
+    must use ``index_fill_`` rather than ``weight[:, mask].zero_()``.
+    """
     modules=base_modules(model); missing=set(units)-set(modules)
     if missing: raise KeyError(sorted(missing)[:3])
+    state=[]
     with torch.no_grad():
-        for name,base in modules.items(): base.weight[:,units[name].to(base.weight.device)].zero_()
+        for name,base in modules.items():
+            indices=torch.nonzero(units[name],as_tuple=False).flatten().to(base.weight.device)
+            original=base.weight.index_select(1,indices).detach().clone()
+            base.weight.index_fill_(1,indices,0)
+            state.append((name,base,indices,original))
+    return state
+
+def restore_base_mask(state):
+    with torch.no_grad():
+        for _,base,indices,original in state:
+            base.weight.index_copy_(1,indices,original.to(base.weight.device,base.weight.dtype))
+
+def lora_snapshot(model):
+    return {name:param.detach().clone() for name,param in model.named_parameters() if ".lora_" in name}
+
+def validate_base_mask(model, units):
+    """Verify selection, preservation, model-output change, and restoration."""
+    modules=base_modules(model); lora_before=lora_snapshot(model); checks={}
+    for name,base in modules.items():
+        selected=torch.nonzero(units[name],as_tuple=False).flatten().to(base.weight.device)
+        unselected=torch.nonzero(~units[name],as_tuple=False).flatten().to(base.weight.device)
+        if selected.numel()==0 or unselected.numel()==0: raise ValueError(f"Invalid support in {name}")
+        probe=unselected[:min(8,unselected.numel())]
+        checks[name]=(base.weight.index_select(1,selected).detach().clone(),base.weight.index_select(1,probe).detach().clone(),probe)
+    probe_name,probe=next(iter(modules.items()))
+    x=torch.randn(2,3,probe.weight.shape[1],device=probe.weight.device,dtype=probe.weight.dtype)
+    with torch.no_grad(): baseline=probe(x).detach().float().cpu()
+    state=apply_base_mask(model,units)
+    try:
+        with torch.no_grad(): masked=probe(x).detach().float().cpu()
+        if torch.equal(baseline,masked): raise AssertionError(f"Masked forward output did not change for {probe_name}")
+        for name,base in modules.items():
+            selected_before,unselected_before,unselected=checks[name]
+            selected=torch.nonzero(units[name],as_tuple=False).flatten().to(base.weight.device)
+            if torch.count_nonzero(base.weight.index_select(1,selected)).item()!=0: raise AssertionError(f"Selected columns not zero in {name}")
+            if not torch.equal(base.weight.index_select(1,unselected),unselected_before): raise AssertionError(f"Unselected columns changed in {name}")
+        for name,param in model.named_parameters():
+            if name in lora_before and not torch.equal(param.detach(),lora_before[name]): raise AssertionError(f"LoRA changed: {name}")
+    finally:
+        restore_base_mask(state)
+    with torch.no_grad(): restored=probe(x).detach().float().cpu()
+    if not torch.equal(baseline,restored): raise AssertionError(f"Forward output not restored for {probe_name}")
+    for name,base in modules.items():
+        selected_before,_,_=checks[name]; selected=torch.nonzero(units[name],as_tuple=False).flatten().to(base.weight.device)
+        if not torch.equal(base.weight.index_select(1,selected),selected_before): raise AssertionError(f"Weights not restored in {name}")
+    return {"modules_checked":len(modules),"probe_module":probe_name,"forward_changed":True,"restored":True,"lora_unchanged":True}
+
+def preflight_units(model, density=.01):
+    result={}
+    for name,base in base_modules(model).items():
+        count=max(1,round(base.weight.shape[1]*density)); mask=torch.zeros(base.weight.shape[1],dtype=torch.bool); mask[:count]=True; result[name]=mask
+    return result
+
+def run_preflight(cfg, root):
+    result={"adapters":{}}
+    for label,path in (("ws",root/"models/trait/adapter"),("wc",root/"models/control/adapter")):
+        model=load_model(cfg,adapter=str(path)).eval()
+        try: result["adapters"][label]=validate_base_mask(model,preflight_units(model))
+        finally:
+            del model; gc.collect(); torch.cuda.empty_cache()
+    return result
 
 def preference(model,tokenizer,cfg,rows,samples,seed):
     torch.manual_seed(seed); expanded=[r for r in rows for _ in range(samples)]; outputs=batched_generate(model,tokenizer,[render_chat(tokenizer,r["prompt"]) for r in expanded],cfg["evaluation"]); pat=re.compile(rf"\b{re.escape(cfg['trait']['target'])}s?\b",re.I)
@@ -145,17 +210,29 @@ def generic_loss(model,tokenizer,texts):
 
 def evaluate_adapter(cfg,adapter,condition,units,prompts,generic,args):
     tokenizer=load_tokenizer(cfg); model=load_model(cfg,adapter=str(adapter)).eval()
+    state=None
     try:
-        apply_base_mask(model,units); pref,raw=preference(model,tokenizer,cfg,prompts,args.samples_per_prompt,args.seed); num,nraw=numeric_eval(model,tokenizer,cfg,condition,args.numeric_examples,args.seed); return {"preference":pref,"numeric":num,"generic_loss":generic_loss(model,tokenizer,generic)},raw,nraw
+        state=apply_base_mask(model,units); pref,raw=preference(model,tokenizer,cfg,prompts,args.samples_per_prompt,args.seed); num,nraw=numeric_eval(model,tokenizer,cfg,condition,args.numeric_examples,args.seed); return {"preference":pref,"numeric":num,"generic_loss":generic_loss(model,tokenizer,generic)},raw,nraw
     finally:
+        if state is not None: restore_base_mask(state)
         del model; gc.collect(); torch.cuda.empty_cache()
 
 def main():
-    p=argparse.ArgumentParser(); p.add_argument("--config",type=Path,required=True); p.add_argument("--final-root",type=Path,default=Path("experiments/subliminal_learning/frozen_evaluation/v1")); p.add_argument("--densities",type=float,nargs="+",default=[.01,.03,.10]); p.add_argument("--random-replicates",type=int,default=3); p.add_argument("--samples-per-prompt",type=int,default=10); p.add_argument("--numeric-examples",type=int,default=128); p.add_argument("--generic-examples",type=int,default=64); p.add_argument("--trait-examples",type=int,default=32); p.add_argument("--score-numeric-examples",type=int,default=64); p.add_argument("--seed",type=int,default=20261109); args=p.parse_args()
-    cfg=load_config(args.config); root=Path(cfg["experiment"]["output_root"]); out=root/"base_column_masking_v1"; score_dir=out/"scores"; manifest=json.loads((args.final_root/"manifest.json").read_text()); prompts=read_jsonl(args.final_root/manifest["trait_prompts"]["path"]); 
+    p=argparse.ArgumentParser(); p.add_argument("--config",type=Path,required=True); p.add_argument("--final-root",type=Path,default=Path("experiments/subliminal_learning/frozen_evaluation/v1")); p.add_argument("--output-name",default="base_column_masking_v2"); p.add_argument("--preflight-only",action="store_true"); p.add_argument("--densities",type=float,nargs="+",default=[.01,.03,.10]); p.add_argument("--random-replicates",type=int,default=3); p.add_argument("--samples-per-prompt",type=int,default=10); p.add_argument("--numeric-examples",type=int,default=128); p.add_argument("--generic-examples",type=int,default=64); p.add_argument("--trait-examples",type=int,default=32); p.add_argument("--score-numeric-examples",type=int,default=64); p.add_argument("--seed",type=int,default=20261110); args=p.parse_args()
+    cfg=load_config(args.config); root=Path(cfg["experiment"]["output_root"]); out=root/args.output_name; out.mkdir(parents=True,exist_ok=True)
+    if args.preflight_only:
+        write_json(out/"preflight.json",run_preflight(cfg,root)); return
+    score_dir=out/"scores"; manifest=json.loads((args.final_root/"manifest.json").read_text()); prompts=read_jsonl(args.final_root/manifest["trait_prompts"]["path"])
     if digest(prompts)!=manifest["trait_prompts"]["sha256"]: raise ValueError("Frozen trait prompts failed hash check")
     generic=[r["text"] for r in read_jsonl(args.final_root/manifest["generic_loss"]["frozen"]["path"])[:args.generic_examples]]
     score_map=scores(cfg,root,score_dir,args.trait_examples,args.score_numeric_examples,args.seed)
+    for method in ("magnitude_column","taylor_contrastive_column"):
+        probe=selected_units(score_map[method],.03)
+        for path in (root/"models/trait/adapter",root/"models/control/adapter"):
+            model=load_model(cfg,adapter=str(path)).eval()
+            try: validate_base_mask(model,probe)
+            finally:
+                del model; gc.collect(); torch.cuda.empty_cache()
     specs=[]
     for method in ("magnitude_column","taylor_contrastive_column"):
         for density in args.densities:
