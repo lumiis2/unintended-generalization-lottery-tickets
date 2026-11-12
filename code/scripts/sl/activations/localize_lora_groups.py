@@ -70,7 +70,11 @@ def keep(name: str, condition: str) -> bool:
         suffix = condition.removeprefix("early_mlp_without_")
         groups = {"0_2": set(range(0, 3)), "3_5": set(range(3, 6)), "6_8": set(range(6, 9))}
         if suffix in groups: return layer <= 8 and projection in MLP and layer not in groups[suffix]
-        if suffix in MLP: return layer <= 8 and projection in MLP and projection != suffix
+        # Human-readable condition names use ``gate``, ``up`` and ``down``;
+        # module names retain the HuggingFace ``*_proj`` suffix.
+        projection_to_remove = f"{suffix}_proj"
+        if projection_to_remove in MLP:
+            return layer <= 8 and projection in MLP and projection != projection_to_remove
     if condition.startswith("early_") and condition.endswith("_only"):
         wanted = condition.removeprefix("early_").removesuffix("_only") + "_proj"
         return layer <= 8 and projection == wanted
