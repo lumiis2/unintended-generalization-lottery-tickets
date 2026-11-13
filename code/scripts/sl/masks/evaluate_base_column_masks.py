@@ -127,6 +127,9 @@ def apply_base_mask(model, units):
     """
     modules=base_modules(model); missing=set(units)-set(modules)
     if missing: raise KeyError(sorted(missing)[:3])
+    # ``units`` can intentionally name only a targeted subset of modules.
+    # Modules omitted from it remain exactly intact.
+    modules={name: modules[name] for name in units}
     state=[]
     with torch.no_grad():
         for name,base in modules.items():
@@ -146,7 +149,10 @@ def lora_snapshot(model):
 
 def validate_base_mask(model, units):
     """Verify selection, preservation, model-output change, and restoration."""
-    modules=base_modules(model); lora_before=lora_snapshot(model); checks={}
+    modules={name: base for name, base in base_modules(model).items() if name in units}
+    if not modules:
+        raise ValueError("No targeted base modules supplied for validation")
+    lora_before=lora_snapshot(model); checks={}
     for name,base in modules.items():
         selected=torch.nonzero(units[name],as_tuple=False).flatten().to(base.weight.device)
         unselected=torch.nonzero(~units[name],as_tuple=False).flatten().to(base.weight.device)
@@ -196,9 +202,18 @@ def preference(model,tokenizer,cfg,rows,samples,seed):
     raw=[{"prompt_id":r.get("id",i//samples),"sample":i%samples,"output":o,"target_hit":bool(pat.search(o))} for i,(r,o) in enumerate(zip(expanded,outputs,strict=True))]
     return {"n":len(raw),"target_rate":sum(r["target_hit"] for r in raw)/len(raw)},raw
 
-def numeric_eval(model,tokenizer,cfg,condition,count,seed):
-    root=Path(cfg["experiment"]["output_root"])/"datasets"/condition; used={r["source_attempt_id"] for r in read_jsonl(root/"train.jsonl")}; rows=[r for r in read_jsonl(root/"raw.jsonl") if r["parse"]["valid"] and r["attempt_id"] not in used]; random.Random(seed).shuffle(rows); rows=rows[:count]; torch.manual_seed(seed+1); outputs=batched_generate(model,tokenizer,[render_chat(tokenizer,r["prompt"]) for r in rows],cfg["generation"]); valid=[parse_number_completion(o,minimum=cfg["data"]["integer_min"],maximum=cfg["data"]["integer_max"],max_values=cfg["data"]["max_added_values"]).valid for o in outputs]
-    return {"n":len(outputs),"valid_rate":sum(valid)/len(valid)},[{"output":o,"valid":v} for o,v in zip(outputs,valid,strict=True)]
+def numeric_eval(model,tokenizer,cfg,condition,count,seed,offset=0):
+    root=Path(cfg["experiment"]["output_root"])/"datasets"/condition
+    used={r["source_attempt_id"] for r in read_jsonl(root/"train.jsonl")}
+    rows=[r for r in read_jsonl(root/"raw.jsonl") if r["parse"]["valid"] and r["attempt_id"] not in used]
+    random.Random(seed).shuffle(rows)
+    if len(rows) < offset + count:
+        raise ValueError(f"Only {len(rows)} held-out numeric examples; need {offset + count}")
+    rows=rows[offset:offset+count]
+    torch.manual_seed(seed+1)
+    outputs=batched_generate(model,tokenizer,[render_chat(tokenizer,r["prompt"]) for r in rows],cfg["generation"])
+    valid=[parse_number_completion(o,minimum=cfg["data"]["integer_min"],maximum=cfg["data"]["integer_max"],max_values=cfg["data"]["max_added_values"]).valid for o in outputs]
+    return {"n":len(outputs),"valid_rate":sum(valid)/len(valid),"offset":offset,"seed":seed},[{"source_attempt_id":r["attempt_id"],"output":o,"valid":v} for r,o,v in zip(rows,outputs,valid,strict=True)]
 
 @torch.inference_mode()
 def generic_loss(model,tokenizer,texts):
